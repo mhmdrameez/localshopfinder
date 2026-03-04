@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import Map, { Shop } from '@/components/Map';
 import ClaimModal from '@/components/ClaimModal';
 import MobileNavigation, { TabType } from '@/components/MobileNavigation';
 import ProfileView from '@/components/ProfileView';
-import { RefreshCw, Timer, Home as HomeIcon, List, User } from 'lucide-react';
+import { RefreshCw, Timer, Home as HomeIcon, List, User, ShieldCheck } from 'lucide-react';
 
 const COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes
 
@@ -27,6 +28,7 @@ export default function Home() {
 
   // Mobile Tab State
   const [activeTab, setActiveTab] = useState<TabType>('map');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // 1. Ask for location on mount
   useEffect(() => {
@@ -48,6 +50,21 @@ export default function Home() {
     } else {
       setCenter({ lat: 17.3850, lng: 78.4867 });
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) return;
+        const data = await res.json();
+        setIsAdmin(data?.user?.role === 'admin');
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+
+    fetchMe();
   }, []);
 
   // 2. Cooldown timer effect
@@ -137,6 +154,15 @@ export default function Home() {
           <User className="w-4 h-4" />
           Profile
         </button>
+        {isAdmin && (
+          <Link
+            href="/admin/dashboard"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors bg-amber-100 text-amber-800 hover:bg-amber-200"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            Admin Control
+          </Link>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 relative pb-[70px] md:pb-0">
@@ -209,6 +235,15 @@ export default function Home() {
       </div>
 
       <MobileNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {isAdmin && (
+        <Link
+          href="/admin/dashboard"
+          className="md:hidden fixed top-3 right-3 z-[2500] inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          Admin
+        </Link>
+      )}
 
       <ClaimModal
         isOpen={!!claimShop}
