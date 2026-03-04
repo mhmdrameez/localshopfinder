@@ -244,10 +244,10 @@ export default function Home() {
       </div>
 
       <MobileNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      {isAdmin && (
+      {isAdmin && activeTab === 'map' && (
         <Link
           href="/admin/dashboard"
-          className="md:hidden fixed top-3 right-3 z-[2500] inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm"
+          className="md:hidden fixed top-3 left-3 z-[2500] inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm"
         >
           <ShieldCheck className="w-3.5 h-3.5" />
           Admin
