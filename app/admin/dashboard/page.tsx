@@ -12,11 +12,21 @@ interface User {
     is_verified: boolean;
     is_approved: boolean;
     created_at: string;
+    l3_hits: number;
+}
+
+interface AdminUserHit {
+    id: string;
+    username: string;
+    email: string;
+    l3_hits: number;
 }
 
 export default function AdminDashboard() {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>([]);
+    const [adminUsers, setAdminUsers] = useState<AdminUserHit[]>([]);
+    const [totalL3Hits, setTotalL3Hits] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -32,6 +42,8 @@ export default function AdminDashboard() {
             }
             const data = await res.json();
             setUsers(data.users || []);
+            setAdminUsers(data.adminUsers || []);
+            setTotalL3Hits(Number(data.totalL3Hits || 0));
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -107,9 +119,14 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
                     <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                         <h2 className="text-lg font-bold text-slate-800">Registered Users</h2>
-                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-                            Total: {users.length}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                                Total Users: {users.length}
+                            </span>
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                                Total L3 Hits (All): {totalL3Hits}
+                            </span>
+                        </div>
                     </div>
 
                     {loading ? (
@@ -127,6 +144,7 @@ export default function AdminDashboard() {
                                     <tr>
                                         <th className="px-6 py-4">User Details</th>
                                         <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4">L3 Cache Hits</th>
                                         <th className="px-6 py-4 text-right">Approval Action</th>
                                     </tr>
                                 </thead>
@@ -150,6 +168,11 @@ export default function AdminDashboard() {
                                                         </span>
                                                     )}
                                                 </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                                                    {Number(user.l3_hits || 0)}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <button
@@ -177,6 +200,37 @@ export default function AdminDashboard() {
                             </table>
                         </div>
                     )}
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden mt-6">
+                    <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                        <h2 className="text-lg font-bold text-slate-800">Admin Users L3 Cache Hits</h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-600">
+                            <thead className="text-xs uppercase bg-slate-50 text-slate-400 font-bold tracking-wider">
+                                <tr>
+                                    <th className="px-6 py-4">Admin Email</th>
+                                    <th className="px-6 py-4">L3 Cache Hits</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {adminUsers.map((adminUser) => (
+                                    <tr key={adminUser.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-slate-900">{adminUser.username}</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">{adminUser.email}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                                                {Number(adminUser.l3_hits || 0)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </main>
         </div>

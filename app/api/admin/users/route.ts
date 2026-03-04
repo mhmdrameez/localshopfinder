@@ -27,7 +27,47 @@ export async function GET() {
 
         if (error) throw error;
 
-        return NextResponse.json({ success: true, users }, { status: 200 });
+        const { data: l3Rows, error: l3Error } = await supabaseAdmin
+            .from('cache_l3_hits')
+            .select('subject_type, subject_key, subject_email, app_user_id, l3_hit_count');
+
+        // If analytics table is not created yet, keep dashboard functional with zero values.
+        const safeL3Rows = l3Error ? [] : (l3Rows || []);
+
+        const userHitsById = new Map<string, number>();
+        const adminUsers: Array<{ id: string; username: string; email: string; l3_hits: number }> = [];
+
+        for (const row of safeL3Rows) {
+            const hits = Number(row.l3_hit_count || 0);
+            if (row.subject_type === 'user' && row.app_user_id) {
+                userHitsById.set(String(row.app_user_id), hits);
+            } else if (row.subject_type === 'admin') {
+                adminUsers.push({
+                    id: String(row.subject_key),
+                    username: 'Admin User',
+                    email: String(row.subject_email || process.env.ADMIN_EMAIL || 'admin@localshopfinder.com'),
+                    l3_hits: hits,
+                });
+            }
+        }
+
+        if (adminUsers.length === 0) {
+            adminUsers.push({
+                id: `admin:${process.env.ADMIN_EMAIL || 'admin@localshopfinder.com'}`,
+                username: 'Admin User',
+                email: process.env.ADMIN_EMAIL || 'admin@localshopfinder.com',
+                l3_hits: 0,
+            });
+        }
+
+        const usersWithHits = (users || []).map((user) => ({
+            ...user,
+            l3_hits: userHitsById.get(user.id) || 0,
+        }));
+
+        const totalL3Hits = safeL3Rows.reduce((sum, row) => sum + Number(row.l3_hit_count || 0), 0);
+
+        return NextResponse.json({ success: true, users: usersWithHits, adminUsers, totalL3Hits }, { status: 200 });
 
     } catch (error: any) {
         console.error('Admin users error:', error);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Redis from 'ioredis';
+import * as jose from 'jose';
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -20,6 +21,8 @@ if (redis) {
 
 // Initialize L1 Memory Cache (resets on server restart/redeploy)
 const memoryCache = new Map<string, any>();
+// L1 per-place details cache (phone/website) — survives across requests within same process
+const detailsCache = new Map<string, { phone: string | null; website: string | null }>();
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371e3;
@@ -39,6 +42,92 @@ const withTimeout = (promise: any, ms: number): Promise<any> => {
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout Error')), ms))
     ]);
 };
+
+type ActorInfo = {
+    subjectType: 'user' | 'admin';
+    subjectKey: string;
+    appUserId: string | null;
+    email: string | null;
+};
+
+function readCookieValue(cookieHeader: string, key: string): string | null {
+    const cookie = cookieHeader
+        .split(';')
+        .map((entry) => entry.trim())
+        .find((entry) => entry.startsWith(`${key}=`));
+    if (!cookie) return null;
+    return decodeURIComponent(cookie.slice(key.length + 1));
+}
+
+async function getActorFromRequest(request: Request): Promise<ActorInfo | null> {
+    try {
+        const token = readCookieValue(request.headers.get('cookie') || '', 'auth_token');
+        if (!token) return null;
+
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_change_me');
+        const { payload } = await jose.jwtVerify(token, secret);
+
+        if (payload.role === 'admin') {
+            const adminEmail = String(payload.email || process.env.ADMIN_EMAIL || 'admin@localshopfinder.com');
+            return {
+                subjectType: 'admin',
+                subjectKey: `admin:${adminEmail}`,
+                appUserId: null,
+                email: adminEmail,
+            };
+        }
+
+        if (payload.role === 'user' && payload.id) {
+            return {
+                subjectType: 'user',
+                subjectKey: `user:${String(payload.id)}`,
+                appUserId: String(payload.id),
+                email: payload.email ? String(payload.email) : null,
+            };
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+async function recordL3CacheHit(request: Request, cacheKey: string) {
+    if (!supabase) return;
+
+    try {
+        const actor = await getActorFromRequest(request);
+        if (!actor) return;
+
+        const { data: existing } = await withTimeout(
+            supabase
+                .from('cache_l3_hits')
+                .select('l3_hit_count')
+                .eq('subject_key', actor.subjectKey)
+                .maybeSingle(),
+            2500
+        );
+
+        const nextHitCount = Number(existing?.l3_hit_count || 0) + 1;
+
+        await withTimeout(
+            supabase
+                .from('cache_l3_hits')
+                .upsert({
+                    subject_type: actor.subjectType,
+                    subject_key: actor.subjectKey,
+                    app_user_id: actor.appUserId,
+                    subject_email: actor.email,
+                    l3_hit_count: nextHitCount,
+                    last_cache_key: cacheKey,
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'subject_key' }),
+            3000
+        );
+    } catch (error: any) {
+        console.log(`[L3 Hit Tracking] skipped: ${error?.message || 'unknown error'}`);
+    }
+}
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -103,6 +192,7 @@ export async function GET(request: Request) {
                         if (redis) {
                             try { await withTimeout(redis.setex(cacheKey, 2592000, JSON.stringify(cachedData.shops_data)), 2000); } catch (e) { }
                         }
+                        await recordL3CacheHit(request, cacheKey);
                         return NextResponse.json({ shops: cachedData.shops_data, source: 'supabase_cache' });
                     }
                 } catch (e: any) {
@@ -147,15 +237,52 @@ export async function GET(request: Request) {
             return 'Local Business';
         }
 
-        // Fetch details for each place to get real phone/website
-        // We batch up to 10 at a time to avoid rate limits
+        // Fetch details for each place — uses 3-tier cache per place_id to minimize Google billing
+        // L1: detailsCache (in-memory per place_id)
+        // L2: Redis (detail:{placeId} key, TTL 90 days)
+        // L3: Google Place Details API (only if L1+L2 miss)
         const detailsMap = new Map<string, { phone: string | null; website: string | null }>();
         const placeIds = apiResults.map((p: any) => p.place_id).filter(Boolean);
+        const uncachedIds: string[] = [];
 
-        // Fetch details in parallel (max 5 concurrent to respect rate limits)
+        // Step 1: Check L1 RAM cache for each place
+        for (const pid of placeIds) {
+            if (detailsCache.has(pid)) {
+                detailsMap.set(pid, detailsCache.get(pid)!);
+            } else {
+                uncachedIds.push(pid);
+            }
+        }
+
+        // Step 2: Check L2 Redis for remaining uncached places
+        const stillUncached: string[] = [];
+        if (redis && uncachedIds.length > 0) {
+            try {
+                const redisKeys = uncachedIds.map(pid => `detail:${pid}`);
+                const redisValues = await withTimeout(redis.mget(...redisKeys), 3000);
+                for (let i = 0; i < uncachedIds.length; i++) {
+                    const val = redisValues[i];
+                    if (val) {
+                        const parsed = JSON.parse(val);
+                        detailsMap.set(uncachedIds[i], parsed);
+                        detailsCache.set(uncachedIds[i], parsed); // Populate L1
+                    } else {
+                        stillUncached.push(uncachedIds[i]);
+                    }
+                }
+            } catch (e) {
+                console.log('[Details Cache] Redis mget failed, falling back to API');
+                stillUncached.push(...uncachedIds);
+            }
+        } else {
+            stillUncached.push(...uncachedIds);
+        }
+
+        // Step 3: Only call Google Place Details API for truly uncached places
+        console.log(`[Details] L1/L2 hits: ${placeIds.length - stillUncached.length}, API calls needed: ${stillUncached.length}`);
         const batchSize = 5;
-        for (let i = 0; i < placeIds.length; i += batchSize) {
-            const batch = placeIds.slice(i, i + batchSize);
+        for (let i = 0; i < stillUncached.length; i += batchSize) {
+            const batch = stillUncached.slice(i, i + batchSize);
             const detailsResults = await Promise.allSettled(
                 batch.map(async (placeId: string) => {
                     const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website&key=${GOOGLE_API_KEY}`;
@@ -166,10 +293,17 @@ export async function GET(request: Request) {
             );
             for (const r of detailsResults) {
                 if (r.status === 'fulfilled') {
-                    detailsMap.set(r.value.placeId, {
+                    const detail = {
                         phone: r.value.result.formatted_phone_number || null,
                         website: r.value.result.website || null,
-                    });
+                    };
+                    detailsMap.set(r.value.placeId, detail);
+                    // Save to L1 RAM
+                    detailsCache.set(r.value.placeId, detail);
+                    // Save to L2 Redis (90 days TTL — shop details rarely change)
+                    if (redis) {
+                        try { redis.setex(`detail:${r.value.placeId}`, 7776000, JSON.stringify(detail)); } catch (e) { }
+                    }
                 }
             }
         }
