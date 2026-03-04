@@ -46,9 +46,8 @@ export async function GET(request: Request) {
 <body>
   <div class="card">
     <h2 style="margin-top:0;">Opening ${mode === 'gpay' ? 'GPay' : 'UPI App'}</h2>
-    <p class="muted">If app does not open automatically, use the buttons below.</p>
-    <a class="btn btn-primary" href="${esc(anyUpiAndroidIntent)}">Open UPI App</a>
-    <a class="btn btn-secondary" href="${esc(upiLink)}">Open UPI App</a>
+    <p class="muted">If app does not open automatically, tap Pay Now.</p>
+    <a class="btn btn-primary" href="${esc(anyUpiAndroidIntent)}">Pay Now</a>
     <p class="muted" style="margin-top:14px;">UPI ID: ${esc(pa)} | Amount: Rs ${esc(am)}</p>
   </div>
   <script>

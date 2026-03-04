@@ -52,8 +52,8 @@ export const sendBilledHitChargeEmail = async (
     to: string,
     billedHitCount: number,
     chargedAmountRs: number,
-    gpayPayLink: string,
-    upiPayLink: string,
+    payNowLink: string,
+    _upiPayLink: string,
     rawUpiLink: string
 ) => {
     const mailOptions = {
@@ -69,8 +69,7 @@ export const sendBilledHitChargeEmail = async (
           <p style="margin:0;"><strong>Total billed hits:</strong> ${billedHitCount}</p>
         </div>
         <div style="margin: 14px 0 18px 0;">
-          <a href="${gpayPayLink}" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-weight:700;margin-right:10px;">Open GPay</a>
-          <a href="${upiPayLink}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-weight:700;">Open UPI App</a>
+          <a href="${payNowLink}" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-weight:700;">Pay Now</a>
         </div>
         <p style="color:#475569;font-size:13px; margin-bottom:6px;">If your mail app blocks app links, copy this UPI link:</p>
         <p style="word-break: break-all; color:#374151; font-size:12px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:8px;">${rawUpiLink}</p>
