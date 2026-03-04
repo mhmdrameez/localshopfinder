@@ -18,6 +18,7 @@ export default function Home() {
   // Cooldown State
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dataSource, setDataSource] = useState<string | null>(null);
 
   // Claim Modal State
   const [claimShop, setClaimShop] = useState<Shop | null>(null);
@@ -79,6 +80,9 @@ export default function Home() {
 
       if (data.shops) {
         setShops(data.shops);
+        if (data.source) {
+          setDataSource(data.source);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch shops', error);
@@ -142,6 +146,23 @@ export default function Home() {
             )}
           </button>
         </div>
+
+        {/* Data Source Badge Indicator */}
+        {dataSource && (
+          <div className="absolute bottom-6 right-6 z-[1000] px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-200 text-xs font-semibold flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${dataSource === 'live_google' ? 'bg-amber-500 animate-pulse' :
+                dataSource === 'redis_cache' ? 'bg-red-500' :
+                  dataSource === 'memory_cache' ? 'bg-green-500' :
+                    'bg-emerald-500' // Supabase
+              }`} />
+            <span className="text-slate-600 uppercase tracking-wider">
+              {dataSource === 'live_google' ? 'Live API (Billed)' :
+                dataSource === 'redis_cache' ? 'Redis Cloud Hit (Free)' :
+                  dataSource === 'memory_cache' ? 'RAM Cache Hit (Free)' :
+                    'Supabase Hit (Free)'}
+            </span>
+          </div>
+        )}
 
         <Map
           shops={shops}

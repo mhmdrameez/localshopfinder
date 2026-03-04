@@ -73,8 +73,9 @@ export async function GET(request: Request) {
             // Level 2: Redis Cache (Edge/Serverless fast lookup)
             if (redis) {
                 try {
-                    const cachedRedis = await withTimeout(redis.get(cacheKey), 2500);
-                    if (cachedRedis) {
+                    const cachedRedisStr = await withTimeout(redis.get(cacheKey), 2500);
+                    if (cachedRedisStr) {
+                        const cachedRedis = typeof cachedRedisStr === 'string' ? JSON.parse(cachedRedisStr) : cachedRedisStr;
                         console.log(`[Cache Hit] L2 Redis Cache for ${cacheKey}`);
                         memoryCache.set(cacheKey, cachedRedis); // Populate L1
                         return NextResponse.json({ shops: cachedRedis, source: 'redis_cache' });
@@ -100,7 +101,7 @@ export async function GET(request: Request) {
                         // Populate upper caches for next time
                         memoryCache.set(cacheKey, cachedData.shops_data);
                         if (redis) {
-                            try { await withTimeout(redis.setex(cacheKey, 86400, JSON.stringify(cachedData.shops_data)), 2000); } catch (e) { }
+                            try { await withTimeout(redis.setex(cacheKey, 2592000, JSON.stringify(cachedData.shops_data)), 2000); } catch (e) { }
                         }
                         return NextResponse.json({ shops: cachedData.shops_data, source: 'supabase_cache' });
                     }
@@ -175,7 +176,7 @@ export async function GET(request: Request) {
 
         if (redis) {
             try {
-                await withTimeout(redis.setex(cacheKey, 86400, JSON.stringify(formattedShops)), 2000);
+                await withTimeout(redis.setex(cacheKey, 2592000, JSON.stringify(formattedShops)), 2000);
             } catch (e) { console.log('Redis save failed', e); }
         }
 
