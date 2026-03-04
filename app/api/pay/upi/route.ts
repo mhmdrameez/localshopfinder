@@ -25,8 +25,8 @@ export async function GET(request: Request) {
 
     const upiQuery = new URLSearchParams({ pa, pn, am, cu, tn }).toString();
     const upiLink = `upi://pay?${upiQuery}`;
-    const gpayIntentLink = `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
-    const target = mode === 'gpay' ? gpayIntentLink : upiLink;
+    const gpayAndroidIntent = `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+    const gpayIosLink = `tez://upi/pay?${upiQuery}`;
 
     const html = `
 <!doctype html>
@@ -48,12 +48,23 @@ export async function GET(request: Request) {
   <div class="card">
     <h2 style="margin-top:0;">Opening ${mode === 'gpay' ? 'GPay' : 'UPI App'}</h2>
     <p class="muted">If app does not open automatically, use the buttons below.</p>
-    <a class="btn btn-primary" href="${esc(gpayIntentLink)}">Open GPay</a>
+    <a class="btn btn-primary" href="${esc(gpayAndroidIntent)}">Open GPay</a>
     <a class="btn btn-secondary" href="${esc(upiLink)}">Open UPI App</a>
     <p class="muted" style="margin-top:14px;">UPI ID: ${esc(pa)} | Amount: Rs ${esc(am)}</p>
   </div>
   <script>
-    setTimeout(function(){ window.location.href = ${JSON.stringify(target)}; }, 200);
+    (function () {
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var primary = ${JSON.stringify(mode === 'gpay' ? '__G_PAY__' : upiLink)};
+      if (primary === '__G_PAY__') {
+        primary = isAndroid ? ${JSON.stringify(gpayAndroidIntent)} : (isIOS ? ${JSON.stringify(gpayIosLink)} : ${JSON.stringify(upiLink)});
+      }
+      var fallback = ${JSON.stringify(upiLink)};
+      setTimeout(function () { window.location.href = primary; }, 200);
+      setTimeout(function () { window.location.href = fallback; }, 1200);
+    })();
   </script>
 </body>
 </html>`;
@@ -63,4 +74,3 @@ export async function GET(request: Request) {
         status: 200,
     });
 }
-

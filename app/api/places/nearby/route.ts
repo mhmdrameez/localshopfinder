@@ -5,11 +5,16 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendBilledHitChargeEmail } from '@/lib/mailer';
+import { signPayToken } from '@/lib/payToken';
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const HIT_CHARGE_RS = Number(process.env.BILLED_HIT_CHARGE_RS || 2);
 const UPI_ID_RAW = process.env.BILLING_UPI_ID || 'localshopfinder@oksbi';
 const UPI_PAYEE_NAME = process.env.BILLING_UPI_NAME || 'Local Shop Finder';
+const APP_BASE_URL =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
 
 // Initialize Supabase Client safely
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -61,6 +66,16 @@ function getValidUpiId(input: string) {
     const upiRegex = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
     if (upiRegex.test(value)) return value;
     return 'localshopfinder@oksbi';
+}
+
+function buildPayUrl(mode: 'gpay' | 'upi', params: Record<string, string>) {
+    if (!APP_BASE_URL) return '';
+    const url = new URL('/pay-now', APP_BASE_URL);
+    const token = params.token;
+    if (!token) return '';
+    url.searchParams.set('token', token);
+    url.searchParams.set('mode', mode);
+    return url.toString();
 }
 
 async function getActorFromRequest(): Promise<ActorInfo | null> {
@@ -183,9 +198,12 @@ async function recordBilledHit(cacheKey: string): Promise<number | null> {
             const upiQuery = new URLSearchParams(payParams).toString();
             const upiLink = `upi://pay?${upiQuery}`;
             const gpayIntentLink = `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+            const payToken = await signPayToken({ ...payParams, mode: 'gpay', email: actor.email });
+            const gpayPayLink = buildPayUrl('gpay', { token: payToken }) || gpayIntentLink;
+            const upiPayLink = buildPayUrl('upi', { token: payToken }) || upiLink;
 
             try {
-                await sendBilledHitChargeEmail(actor.email, nextBilled, HIT_CHARGE_RS, gpayIntentLink, upiLink, upiLink);
+                await sendBilledHitChargeEmail(actor.email, nextBilled, HIT_CHARGE_RS, gpayPayLink, upiPayLink, upiLink);
             } catch (mailError) {
                 console.log('[Billed Hit Email] failed', mailError);
             }

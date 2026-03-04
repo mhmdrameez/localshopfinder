@@ -28,6 +28,7 @@ interface AdminUserHit {
     total_due_rs: number;
     gpay_link: string;
     upi_link: string;
+    pay_url: string;
     updated_at: string | null;
 }
 
@@ -105,10 +106,8 @@ export default function AdminDashboard() {
 
     const handlePayClick = (row: AdminUserHit) => {
         if (typeof window === 'undefined') return;
-        window.location.href = row.gpay_link;
-        setTimeout(() => {
-            window.location.href = row.upi_link;
-        }, 900);
+        const launcher = row.pay_url || row.gpay_link || row.upi_link;
+        window.open(launcher, '_blank');
     };
 
     return (

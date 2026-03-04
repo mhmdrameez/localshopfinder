@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import * as jose from 'jose';
 import { cookies } from 'next/headers';
+import { signPayToken } from '@/lib/payToken';
+
+const APP_BASE_URL =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+
+function buildPayUrl(mode: 'gpay' | 'upi', params: Record<string, string>) {
+    if (!APP_BASE_URL) return '';
+    const url = new URL('/api/pay/upi', APP_BASE_URL);
+    url.searchParams.set('mode', mode);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    return url.toString();
+}
 
 export async function GET() {
     try {
@@ -49,6 +63,7 @@ export async function GET() {
             total_due_rs: number;
             gpay_link: string;
             upi_link: string;
+            pay_url: string;
             updated_at: string | null;
         }> = [];
 
@@ -57,8 +72,25 @@ export async function GET() {
             const billedHits = Number(row.billed_hit_count || 0);
             const due = Number((billedHits * chargePerHitRs).toFixed(2));
             const note = `${row.subject_type || 'user'} usage ${row.subject_key || ''}`.trim();
-            const upiQuery = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${due.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+            const payParams = {
+                pa: upiId,
+                pn: upiName,
+                am: due.toFixed(2),
+                cu: 'INR',
+                tn: note,
+            };
+            const upiQuery = new URLSearchParams(payParams).toString();
             const actorEmail = String(row.subject_email || '');
+            const payToken = await signPayToken({
+                pa: payParams.pa,
+                pn: payParams.pn,
+                am: payParams.am,
+                cu: payParams.cu,
+                tn: payParams.tn,
+                mode: 'gpay',
+                email: actorEmail || undefined,
+            });
+            const payPage = buildPayUrl('gpay', { token: payToken });
 
             usageRows.push({
                 id: String(row.subject_key || row.app_user_id || actorEmail || Math.random().toString()),
@@ -69,6 +101,7 @@ export async function GET() {
                 total_due_rs: due,
                 gpay_link: `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`,
                 upi_link: `upi://pay?${upiQuery}`,
+                pay_url: payPage || `upi://pay?${upiQuery}`,
                 updated_at: row.updated_at ? String(row.updated_at) : null,
             });
 
