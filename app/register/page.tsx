@@ -35,9 +35,8 @@ export default function RegisterPage() {
                 throw new Error(data.error || 'Registration failed');
             }
 
-            // Registration successful! Bypass OTP, go straight to pending approval
-            // router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
-            router.push('/pending-approval');
+            // Registration successful! Redirect to OTP verification
+            router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
         } catch (err: any) {
             setError(err.message);
         } finally {
