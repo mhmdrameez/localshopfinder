@@ -107,7 +107,12 @@ export default function AdminDashboard() {
     const handlePayClick = (row: AdminUserHit) => {
         if (typeof window === 'undefined') return;
         const launcher = row.pay_url || row.gpay_link || row.upi_link;
-        window.open(launcher, '_blank');
+        window.location.href = launcher;
+        setTimeout(() => {
+            if (row.upi_link) {
+                window.location.href = row.upi_link;
+            }
+        }, 1200);
     };
 
     return (
@@ -326,7 +331,7 @@ export default function AdminDashboard() {
                                                 onClick={() => handlePayClick(row)}
                                                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 transition-colors"
                                             >
-                                                Pay in GPay
+                                                Pay Now
                                             </button>
                                         </td>
                                     </tr>
