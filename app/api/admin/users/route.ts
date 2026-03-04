@@ -48,6 +48,7 @@ export async function GET() {
             billed_hits: number;
             total_due_rs: number;
             gpay_link: string;
+            upi_link: string;
             updated_at: string | null;
         }> = [];
 
@@ -66,7 +67,8 @@ export async function GET() {
                 l3_hits: hits,
                 billed_hits: billedHits,
                 total_due_rs: due,
-                gpay_link: `gpay://upi/pay?${upiQuery}`,
+                gpay_link: `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`,
+                upi_link: `upi://pay?${upiQuery}`,
                 updated_at: row.updated_at ? String(row.updated_at) : null,
             });
 

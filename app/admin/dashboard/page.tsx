@@ -27,6 +27,7 @@ interface AdminUserHit {
     billed_hits: number;
     total_due_rs: number;
     gpay_link: string;
+    upi_link: string;
     updated_at: string | null;
 }
 
@@ -100,6 +101,14 @@ export default function AdminDashboard() {
         } catch (err: unknown) {
             alert(err instanceof Error ? err.message : 'Failed to update status');
         }
+    };
+
+    const handlePayClick = (row: AdminUserHit) => {
+        if (typeof window === 'undefined') return;
+        window.location.href = row.gpay_link;
+        setTimeout(() => {
+            window.location.href = row.upi_link;
+        }, 900);
     };
 
     return (
@@ -313,12 +322,13 @@ export default function AdminDashboard() {
                                         </td>
                                         <td className="px-6 py-4 font-bold text-amber-700">Rs {Number(row.total_due_rs || 0).toFixed(2)}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <a
-                                                href={row.gpay_link}
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePayClick(row)}
                                                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 transition-colors"
                                             >
                                                 Pay in GPay
-                                            </a>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
