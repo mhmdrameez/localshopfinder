@@ -87,7 +87,7 @@ export async function GET() {
                 am: payParams.am,
                 cu: payParams.cu,
                 tn: payParams.tn,
-                mode: 'gpay',
+                mode: 'upi',
                 email: actorEmail || undefined,
             });
             const payPage = buildPayUrl('gpay', { token: payToken });

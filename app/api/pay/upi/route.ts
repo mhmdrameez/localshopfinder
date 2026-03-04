@@ -25,8 +25,7 @@ export async function GET(request: Request) {
 
     const upiQuery = new URLSearchParams({ pa, pn, am, cu, tn }).toString();
     const upiLink = `upi://pay?${upiQuery}`;
-    const gpayAndroidIntent = `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
-    const gpayIosLink = `tez://upi/pay?${upiQuery}`;
+    const anyUpiAndroidIntent = `intent://upi/pay?${upiQuery}#Intent;scheme=upi;end`;
 
     const html = `
 <!doctype html>
@@ -48,7 +47,7 @@ export async function GET(request: Request) {
   <div class="card">
     <h2 style="margin-top:0;">Opening ${mode === 'gpay' ? 'GPay' : 'UPI App'}</h2>
     <p class="muted">If app does not open automatically, use the buttons below.</p>
-    <a class="btn btn-primary" href="${esc(gpayAndroidIntent)}">Open GPay</a>
+    <a class="btn btn-primary" href="${esc(anyUpiAndroidIntent)}">Open UPI App</a>
     <a class="btn btn-secondary" href="${esc(upiLink)}">Open UPI App</a>
     <p class="muted" style="margin-top:14px;">UPI ID: ${esc(pa)} | Amount: Rs ${esc(am)}</p>
   </div>
@@ -59,7 +58,7 @@ export async function GET(request: Request) {
       var isIOS = /iPhone|iPad|iPod/i.test(ua);
       var primary = ${JSON.stringify(mode === 'gpay' ? '__G_PAY__' : upiLink)};
       if (primary === '__G_PAY__') {
-        primary = isAndroid ? ${JSON.stringify(gpayAndroidIntent)} : (isIOS ? ${JSON.stringify(gpayIosLink)} : ${JSON.stringify(upiLink)});
+        primary = isAndroid ? ${JSON.stringify(anyUpiAndroidIntent)} : (isIOS ? ${JSON.stringify(upiLink)} : ${JSON.stringify(upiLink)});
       }
       var fallback = ${JSON.stringify(upiLink)};
       setTimeout(function () { window.location.href = primary; }, 200);

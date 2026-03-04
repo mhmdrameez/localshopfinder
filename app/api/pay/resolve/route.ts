@@ -24,6 +24,7 @@ export async function GET(request: Request) {
         }).toString();
 
         const upiLink = `upi://pay?${query}`;
+        const anyUpiAndroidIntent = `intent://upi/pay?${query}#Intent;scheme=upi;end`;
         const gpayAndroidIntent = `intent://upi/pay?${query}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
         const gpayIosLink = `tez://upi/pay?${query}`;
 
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
             upiId: data.pa,
             note: data.tn,
             upiLink,
+            anyUpiAndroidIntent,
             gpayAndroidIntent,
             gpayIosLink,
         }, { status: 200 });
@@ -43,4 +45,3 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Invalid or expired payment link' }, { status: 400 });
     }
 }
-

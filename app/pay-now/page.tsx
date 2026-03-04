@@ -11,6 +11,7 @@ type PayData = {
     upiId: string;
     note: string;
     upiLink: string;
+    anyUpiAndroidIntent: string;
     gpayAndroidIntent: string;
     gpayIosLink: string;
 };
@@ -20,10 +21,8 @@ function getPrimaryLink(data: PayData) {
     const isAndroid = /Android/i.test(ua);
     const isIOS = /iPhone|iPad|iPod/i.test(ua);
 
-    if (data.mode === 'gpay') {
-        if (isAndroid) return data.gpayAndroidIntent;
-        if (isIOS) return data.gpayIosLink;
-    }
+    if (isAndroid) return data.anyUpiAndroidIntent || data.upiLink;
+    if (isIOS) return data.upiLink;
     return data.upiLink;
 }
 
@@ -78,7 +77,7 @@ export default function PayNowPage() {
         <div className="min-h-[100dvh] bg-slate-50 p-4 flex items-center justify-center">
             <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                 <h1 className="text-2xl font-black text-slate-900">Pay Now</h1>
-                <p className="text-sm text-slate-500 mt-1">Opening payment app automatically.</p>
+                <p className="text-sm text-slate-500 mt-1">Opening any available UPI app automatically.</p>
 
                 {loading && (
                     <div className="mt-6 text-slate-500 inline-flex items-center gap-2">
@@ -111,4 +110,3 @@ export default function PayNowPage() {
         </div>
     );
 }
-

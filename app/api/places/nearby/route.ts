@@ -198,7 +198,7 @@ async function recordBilledHit(cacheKey: string): Promise<number | null> {
             const upiQuery = new URLSearchParams(payParams).toString();
             const upiLink = `upi://pay?${upiQuery}`;
             const gpayIntentLink = `intent://upi/pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
-            const payToken = await signPayToken({ ...payParams, mode: 'gpay', email: actor.email });
+            const payToken = await signPayToken({ ...payParams, mode: 'upi', email: actor.email });
             const gpayPayLink = buildPayUrl('gpay', { token: payToken }) || gpayIntentLink;
             const upiPayLink = buildPayUrl('upi', { token: payToken }) || upiLink;
 
