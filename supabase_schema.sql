@@ -5,12 +5,16 @@ CREATE TABLE IF NOT EXISTS public.app_users (
     username TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    is_admin BOOLEAN DEFAULT false,
     is_verified BOOLEAN DEFAULT false,
     is_approved BOOLEAN DEFAULT false,
     otp_code TEXT,
     otp_expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.app_users
+    ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
 
 -- Optional: Create an index on email for faster logins
 CREATE INDEX IF NOT EXISTS idx_app_users_email ON public.app_users(email);
@@ -24,6 +28,23 @@ CREATE POLICY "Allow public insert" ON public.app_users FOR INSERT WITH CHECK (t
 CREATE POLICY "Allow public select" ON public.app_users FOR SELECT USING (true);
 CREATE POLICY "Allow public update" ON public.app_users FOR UPDATE USING (true);
 
+
+INSERT INTO public.app_users (username, email, password_hash, is_admin, is_verified, is_approved)
+VALUES (
+    'Admin',
+    'admin@localshopfinder.vercel.app',
+    '$2b$10$Cro/Ptj/b7pqF9u/Alw4Q.r0SF17fJyeIqESPZEvUlTeiM0R/zGV6',
+    true,
+    true,
+    true
+)
+ON CONFLICT (email) DO UPDATE
+SET
+    username = EXCLUDED.username,
+    is_admin = true,
+    is_verified = true,
+    is_approved = true;
+
 -- L3 cache hit analytics per actor (user/admin)
 CREATE TABLE IF NOT EXISTS public.cache_l3_hits (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -32,10 +53,14 @@ CREATE TABLE IF NOT EXISTS public.cache_l3_hits (
     app_user_id UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
     subject_email TEXT,
     l3_hit_count BIGINT NOT NULL DEFAULT 0,
+    billed_hit_count BIGINT NOT NULL DEFAULT 0,
     last_cache_key TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.cache_l3_hits
+    ADD COLUMN IF NOT EXISTS billed_hit_count BIGINT NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_cache_l3_hits_app_user_id ON public.cache_l3_hits(app_user_id);
 CREATE INDEX IF NOT EXISTS idx_cache_l3_hits_subject_type ON public.cache_l3_hits(subject_type);

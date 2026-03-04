@@ -14,6 +14,7 @@ interface User {
     is_approved: boolean;
     created_at: string;
     l3_hits: number;
+    billed_hits: number;
 }
 
 interface AdminUserHit {
@@ -21,6 +22,7 @@ interface AdminUserHit {
     username: string;
     email: string;
     l3_hits: number;
+    billed_hits: number;
 }
 
 export default function AdminDashboard() {
@@ -28,6 +30,7 @@ export default function AdminDashboard() {
     const [users, setUsers] = useState<User[]>([]);
     const [adminUsers, setAdminUsers] = useState<AdminUserHit[]>([]);
     const [totalL3Hits, setTotalL3Hits] = useState(0);
+    const [totalBilledHits, setTotalBilledHits] = useState(0);
     const [activeTab, setActiveTab] = useState<'users' | 'chat'>('users');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -46,6 +49,7 @@ export default function AdminDashboard() {
             setUsers(data.users || []);
             setAdminUsers(data.adminUsers || []);
             setTotalL3Hits(Number(data.totalL3Hits || 0));
+            setTotalBilledHits(Number(data.totalBilledHits || 0));
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to fetch users');
         } finally {
@@ -148,6 +152,9 @@ export default function AdminDashboard() {
                             <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
                                 Total L3 Hits (All): {totalL3Hits}
                             </span>
+                            <span className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
+                                Total Billed Hits (All): {totalBilledHits}
+                            </span>
                         </div>
                     </div>
 
@@ -167,6 +174,7 @@ export default function AdminDashboard() {
                                         <th className="px-6 py-4">User Details</th>
                                         <th className="px-6 py-4">Status</th>
                                         <th className="px-6 py-4">L3 Cache Hits</th>
+                                        <th className="px-6 py-4">Billed Hits</th>
                                         <th className="px-6 py-4 text-right">Approval Action</th>
                                     </tr>
                                 </thead>
@@ -194,6 +202,11 @@ export default function AdminDashboard() {
                                             <td className="px-6 py-4">
                                                 <span className="inline-flex items-center text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
                                                     {Number(user.l3_hits || 0)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100">
+                                                    {Number(user.billed_hits || 0)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -234,12 +247,13 @@ export default function AdminDashboard() {
                                 <tr>
                                     <th className="px-6 py-4">Admin Email</th>
                                     <th className="px-6 py-4">L3 Cache Hits</th>
+                                    <th className="px-6 py-4">Billed Hits</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {adminUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={2} className="px-6 py-8 text-center text-sm text-slate-500">
+                                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">
                                             No admin L3 cache hits recorded yet.
                                         </td>
                                     </tr>
@@ -252,6 +266,11 @@ export default function AdminDashboard() {
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
                                                 {Number(adminUser.l3_hits || 0)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100">
+                                                {Number(adminUser.billed_hits || 0)}
                                             </span>
                                         </td>
                                     </tr>

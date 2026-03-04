@@ -123,6 +123,48 @@ async function recordL3CacheHit(cacheKey: string) {
     }
 }
 
+async function recordBilledHit(cacheKey: string): Promise<number | null> {
+    if (!supabaseAdmin) return null;
+
+    try {
+        const actor = await getActorFromRequest();
+        if (!actor) return null;
+
+        const { data: existing } = await withTimeout(
+            supabaseAdmin
+                .from('cache_l3_hits')
+                .select('l3_hit_count, billed_hit_count')
+                .eq('subject_key', actor.subjectKey)
+                .maybeSingle(),
+            2500
+        );
+
+        const currentL3 = Number(existing?.l3_hit_count || 0);
+        const nextBilled = Number(existing?.billed_hit_count || 0) + 1;
+
+        await withTimeout(
+            supabaseAdmin
+                .from('cache_l3_hits')
+                .upsert({
+                    subject_type: actor.subjectType,
+                    subject_key: actor.subjectKey,
+                    app_user_id: actor.appUserId,
+                    subject_email: actor.email,
+                    l3_hit_count: currentL3,
+                    billed_hit_count: nextBilled,
+                    last_cache_key: cacheKey,
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'subject_key' }),
+            3000
+        );
+
+        return nextBilled;
+    } catch (error: any) {
+        console.log(`[Billed Hit Tracking] skipped: ${error?.message || 'unknown error'}`);
+        return null;
+    }
+}
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || 'All';
@@ -355,7 +397,8 @@ export async function GET(request: Request) {
             } catch (e) { console.error("Supabase Save Error:", e); }
         }
 
-        return NextResponse.json({ shops: formattedShops, source: 'live_google' });
+        const billedCount = await recordBilledHit(cacheKey);
+        return NextResponse.json({ shops: formattedShops, source: 'live_google', billedCount });
 
     } catch (error) {
         console.error('API Route Error:', error);

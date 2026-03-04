@@ -36,6 +36,7 @@ export async function POST(req: Request) {
                 username,
                 email,
                 password_hash: passwordHash,
+                is_admin: false,
                 is_verified: false,
                 otp_code: otpCode,
                 otp_expires_at: expiresAt.toISOString(),

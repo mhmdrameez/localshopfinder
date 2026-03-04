@@ -22,6 +22,7 @@ export default function Home() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<string | null>(null);
+  const [myBilledCount, setMyBilledCount] = useState<number | null>(null);
 
   // Claim Modal State
   const [claimShop, setClaimShop] = useState<Shop | null>(null);
@@ -104,6 +105,9 @@ export default function Home() {
         setShops(data.shops);
         if (data.source) {
           setDataSource(data.source);
+        }
+        if (typeof data.billedCount === 'number') {
+          setMyBilledCount(data.billedCount);
         }
       }
     } catch (error) {
@@ -214,6 +218,11 @@ export default function Home() {
                         dataSource === 'memory_cache' ? 'RAM Cache Hit (Free)' :
                           'Supabase Hit (Free)'}
                   </span>
+                </div>
+              )}
+              {myBilledCount !== null && (
+                <div className="px-2.5 md:px-3 py-1 md:py-1.5 rounded-full bg-rose-50 shadow-lg border border-rose-200 text-[10px] md:text-xs font-bold flex items-center gap-1.5 md:gap-2 text-rose-700">
+                  My Billed Hits: {myBilledCount}
                 </div>
               )}
             </div>
