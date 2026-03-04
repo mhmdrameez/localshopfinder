@@ -22,18 +22,25 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const targetUserId = searchParams.get('userId');
+        const since = searchParams.get('since');
         const conversationUserId = me.role === 'admin' ? targetUserId : me.id;
 
         if (!conversationUserId) {
             return NextResponse.json({ error: 'userId is required' }, { status: 400 });
         }
 
-        const { data, error } = await supabaseAdmin
+        let query = supabaseAdmin
             .from('chat_messages')
             .select('id, conversation_user_id, sender_role, sender_user_id, sender_email, message, is_read, created_at')
-            .eq('conversation_user_id', conversationUserId)
+            .eq('conversation_user_id', conversationUserId);
+
+        if (since) {
+            query = query.gt('created_at', since);
+        }
+
+        const { data, error } = await query
             .order('created_at', { ascending: true })
-            .limit(500);
+            .limit(since ? 200 : 500);
 
         if (error) throw error;
 
@@ -90,4 +97,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
-

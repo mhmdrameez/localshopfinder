@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { io, type Socket } from 'socket.io-client';
 import { MessageCircle, X, Loader2, SendHorizontal, Circle } from 'lucide-react';
 
 type ChatMessage = {
@@ -12,32 +11,65 @@ type ChatMessage = {
     created_at: string;
 };
 
-type TokenResponse = {
-    token: string;
-    socketUrl: string;
-    unreadCount: number;
-    me: { role: 'admin' | 'user'; id: string | null; email: string | null };
-};
+const UNREAD_POLL_MS = 6000;
+const MSG_POLL_MS = 2500;
 
 export default function UserChatWidget() {
-    const socketRef = useRef<Socket | null>(null);
     const [open, setOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [draft, setDraft] = useState('');
     const [unreadCount, setUnreadCount] = useState(0);
-    const [connected, setConnected] = useState(false);
     const [isUser, setIsUser] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const lastTsRef = useRef<string | null>(null);
 
-    const fetchMessages = async () => {
-        setLoadingMessages(true);
+    const fetchUnreadCount = async () => {
+        const res = await fetch('/api/chat/token');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.me?.role !== 'user') {
+            setIsUser(false);
+            return;
+        }
+        setIsUser(true);
+        setUnreadCount(Number(data.unreadCount || 0));
+    };
+
+    const fetchMessages = async (incremental: boolean) => {
+        if (!incremental) setLoadingMessages(true);
+        else setRefreshing(true);
+
         try {
-            const res = await fetch('/api/chat/messages');
+            const sincePart = incremental && lastTsRef.current
+                ? `?since=${encodeURIComponent(lastTsRef.current)}`
+                : '';
+            const res = await fetch(`/api/chat/messages${sincePart}`);
             if (!res.ok) return;
             const data = await res.json();
-            setMessages((data.messages || []) as ChatMessage[]);
+            const incoming = (data.messages || []) as ChatMessage[];
+
+            if (!incremental) {
+                setMessages(incoming);
+                if (incoming.length > 0) {
+                    lastTsRef.current = incoming[incoming.length - 1].created_at;
+                } else {
+                    lastTsRef.current = null;
+                }
+            } else if (incoming.length > 0) {
+                setMessages((prev) => {
+                    const ids = new Set(prev.map((m) => m.id));
+                    const merged = [...prev];
+                    for (const msg of incoming) {
+                        if (!ids.has(msg.id)) merged.push(msg);
+                    }
+                    return merged;
+                });
+                lastTsRef.current = incoming[incoming.length - 1].created_at;
+            }
         } finally {
-            setLoadingMessages(false);
+            if (!incremental) setLoadingMessages(false);
+            else setRefreshing(false);
         }
     };
 
@@ -47,64 +79,58 @@ export default function UserChatWidget() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
         });
-        socketRef.current?.emit('chat:markRead', {});
         setUnreadCount(0);
     };
 
-    const initSocket = async () => {
-        await fetch('/api/socket/init');
-        const tokenRes = await fetch('/api/chat/token');
-        if (!tokenRes.ok) return;
-        const tokenData = (await tokenRes.json()) as TokenResponse;
-
-        if (tokenData.me.role !== 'user') {
-            setIsUser(false);
-            return;
-        }
-        setIsUser(true);
-        setUnreadCount(Number(tokenData.unreadCount || 0));
-
-        const socket = io(tokenData.socketUrl, {
-            transports: ['websocket'],
-            auth: { token: tokenData.token },
-        });
-        socketRef.current = socket;
-
-        socket.on('connect', () => setConnected(true));
-        socket.on('disconnect', () => setConnected(false));
-
-        socket.on('chat:new', (incoming: ChatMessage) => {
-            setMessages((prev) => [...prev, incoming]);
-            if (!openRef.current && incoming.sender_role === 'admin') {
-                setUnreadCount((prev) => prev + 1);
-            }
-        });
-    };
-
-    const openRef = useRef(open);
     useEffect(() => {
-        openRef.current = open;
-    }, [open]);
-
-    useEffect(() => {
-        initSocket();
-        return () => {
-            socketRef.current?.disconnect();
-            socketRef.current = null;
-        };
+        void fetchUnreadCount();
     }, []);
 
     useEffect(() => {
+        if (!isUser) return;
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible' && !open) {
+                void fetchUnreadCount();
+            }
+        }, UNREAD_POLL_MS);
+        return () => clearInterval(interval);
+    }, [isUser, open]);
+
+    useEffect(() => {
         if (!open || !isUser) return;
-        fetchMessages();
-        markRead();
+        lastTsRef.current = null;
+        void fetchMessages(false);
+        void markRead();
     }, [open, isUser]);
 
-    const sendMessage = () => {
+    useEffect(() => {
+        if (!open || !isUser) return;
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                void fetchMessages(true);
+                void markRead();
+            }
+        }, MSG_POLL_MS);
+        return () => clearInterval(interval);
+    }, [open, isUser]);
+
+    const sendMessage = async () => {
         const text = draft.trim();
         if (!text) return;
-        socketRef.current?.emit('chat:send', { message: text });
         setDraft('');
+
+        const res = await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const created = data.message as ChatMessage | undefined;
+        if (!created) return;
+
+        setMessages((prev) => [...prev, created]);
+        lastTsRef.current = created.created_at;
     };
 
     if (!isUser) return null;
@@ -127,7 +153,6 @@ export default function UserChatWidget() {
                             <Circle className="w-2 h-2 fill-current" /> {unreadCount}
                         </span>
                     )}
-                    {!connected && <span className="text-[10px] text-slate-400">offline</span>}
                 </div>
             </button>
 
@@ -137,7 +162,7 @@ export default function UserChatWidget() {
                         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                             <div>
                                 <h3 className="font-bold text-slate-900">Support Chat</h3>
-                                <p className="text-xs text-slate-500">{connected ? 'Connected' : 'Connecting...'}</p>
+                                <p className="text-xs text-slate-500">Auto refresh {MSG_POLL_MS / 1000}s</p>
                             </div>
                             <button
                                 onClick={() => setOpen(false)}
@@ -182,18 +207,25 @@ export default function UserChatWidget() {
                         </div>
 
                         <div className="border-t border-slate-100 p-3 bg-white">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[11px] text-slate-400">
+                                    {refreshing ? 'Checking new messages...' : 'Up to date'}
+                                </span>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <input
                                     value={draft}
                                     onChange={(e) => setDraft(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter') sendMessage();
+                                        if (e.key === 'Enter') {
+                                            void sendMessage();
+                                        }
                                     }}
                                     placeholder="Type a message..."
                                     className="flex-1 h-10 px-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                                 />
                                 <button
-                                    onClick={sendMessage}
+                                    onClick={() => void sendMessage()}
                                     disabled={!draft.trim()}
                                     className="h-10 px-4 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:bg-slate-200 disabled:text-slate-400 inline-flex items-center gap-2"
                                 >

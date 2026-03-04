@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { io, type Socket } from 'socket.io-client';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, SendHorizontal, MessageCircle, Circle } from 'lucide-react';
 
 type ChatUser = {
@@ -10,146 +9,157 @@ type ChatUser = {
     email: string;
     unread_count: number;
     last_message: string | null;
-    last_message_at: string | null;
 };
 
 type ChatMessage = {
     id: string;
     conversation_user_id: string;
     sender_role: 'admin' | 'user';
-    sender_email: string | null;
     message: string;
     created_at: string;
-    is_read: boolean;
 };
 
-export default function AdminChatPanel() {
-    const socketRef = useRef<Socket | null>(null);
+const USERS_POLL_MS = 5000;
+const MSG_POLL_MS = 2500;
 
+export default function AdminChatPanel() {
     const [users, setUsers] = useState<ChatUser[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [draft, setDraft] = useState('');
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
-    const [connected, setConnected] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const lastTsRef = useRef<string | null>(null);
 
     const selectedUser = useMemo(
         () => users.find((u) => u.id === selectedUserId) || null,
         [users, selectedUserId]
     );
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async (silent = false) => {
+        if (!silent) setLoadingUsers(true);
         try {
             const res = await fetch('/api/chat/users');
             if (!res.ok) return;
             const data = await res.json();
             const nextUsers = (data.users || []) as ChatUser[];
             setUsers(nextUsers);
-
             if (!selectedUserId && nextUsers.length > 0) {
                 setSelectedUserId(nextUsers[0].id);
             }
         } finally {
-            setLoadingUsers(false);
+            if (!silent) setLoadingUsers(false);
         }
-    };
+    }, [selectedUserId]);
 
-    const fetchMessages = async (userId: string) => {
-        setLoadingMessages(true);
-        try {
-            const res = await fetch(`/api/chat/messages?userId=${userId}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            setMessages((data.messages || []) as ChatMessage[]);
-        } finally {
-            setLoadingMessages(false);
-        }
-    };
-
-    const markRead = async (userId: string) => {
+    const markRead = useCallback(async (userId: string) => {
         await fetch('/api/chat/read', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId }),
         });
-
-        socketRef.current?.emit('chat:markRead', { userId });
         setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, unread_count: 0 } : u)));
-    };
-
-    const initSocket = async () => {
-        await fetch('/api/socket/init');
-        const tokenRes = await fetch('/api/chat/token');
-        if (!tokenRes.ok) return;
-
-        const tokenData = await tokenRes.json();
-        const socket = io(tokenData.socketUrl, {
-            transports: ['websocket'],
-            auth: { token: tokenData.token },
-        });
-        socketRef.current = socket;
-
-        socket.on('connect', () => setConnected(true));
-        socket.on('disconnect', () => setConnected(false));
-
-        socket.on('chat:new', (incoming: ChatMessage) => {
-            const active = selectedUserIdRef.current;
-            if (incoming.conversation_user_id === active) {
-                setMessages((prev) => [...prev, incoming]);
-            } else {
-                setUsers((prev) =>
-                    prev.map((u) =>
-                        u.id === incoming.conversation_user_id
-                            ? { ...u, unread_count: u.unread_count + (incoming.sender_role === 'user' ? 1 : 0) }
-                            : u
-                    )
-                );
-            }
-            fetchUsers();
-        });
-
-        socket.on('chat:inbox:update', () => {
-            fetchUsers();
-        });
-    };
-
-    const selectedUserIdRef = useRef<string | null>(null);
-    useEffect(() => {
-        selectedUserIdRef.current = selectedUserId;
-    }, [selectedUserId]);
-
-    useEffect(() => {
-        fetchUsers();
-        initSocket();
-
-        return () => {
-            socketRef.current?.disconnect();
-            socketRef.current = null;
-        };
     }, []);
+
+    const fetchMessages = useCallback(async (userId: string, incremental: boolean) => {
+        if (!incremental) setLoadingMessages(true);
+        else setRefreshing(true);
+
+        try {
+            const sincePart = incremental && lastTsRef.current
+                ? `&since=${encodeURIComponent(lastTsRef.current)}`
+                : '';
+            const res = await fetch(`/api/chat/messages?userId=${userId}${sincePart}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const incoming = (data.messages || []) as ChatMessage[];
+
+            if (!incremental) {
+                setMessages(incoming);
+                if (incoming.length > 0) {
+                    lastTsRef.current = incoming[incoming.length - 1].created_at;
+                } else {
+                    lastTsRef.current = null;
+                }
+            } else if (incoming.length > 0) {
+                setMessages((prev) => {
+                    const ids = new Set(prev.map((m) => m.id));
+                    const merged = [...prev];
+                    for (const msg of incoming) {
+                        if (!ids.has(msg.id)) merged.push(msg);
+                    }
+                    return merged;
+                });
+                lastTsRef.current = incoming[incoming.length - 1].created_at;
+                if (incoming.some((m) => m.sender_role === 'user')) {
+                    await markRead(userId);
+                }
+            }
+        } finally {
+            if (!incremental) setLoadingMessages(false);
+            else setRefreshing(false);
+        }
+    }, [markRead]);
+
+    useEffect(() => {
+        void fetchUsers(false);
+    }, [fetchUsers]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                void fetchUsers(true);
+            }
+        }, USERS_POLL_MS);
+        return () => clearInterval(interval);
+    }, [fetchUsers]);
 
     useEffect(() => {
         if (!selectedUserId) return;
-        fetchMessages(selectedUserId);
-        socketRef.current?.emit('chat:join', { userId: selectedUserId });
-        markRead(selectedUserId);
-    }, [selectedUserId]);
+        lastTsRef.current = null;
+        void fetchMessages(selectedUserId, false);
+        void markRead(selectedUserId);
+    }, [selectedUserId, fetchMessages, markRead]);
 
-    const sendMessage = () => {
+    useEffect(() => {
+        if (!selectedUserId) return;
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                void fetchMessages(selectedUserId, true);
+            }
+        }, MSG_POLL_MS);
+        return () => clearInterval(interval);
+    }, [selectedUserId, fetchMessages]);
+
+    const sendMessage = useCallback(async () => {
         if (!selectedUserId) return;
         const text = draft.trim();
         if (!text) return;
-        socketRef.current?.emit('chat:send', { userId: selectedUserId, message: text });
+
         setDraft('');
-    };
+        const res = await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: selectedUserId, message: text }),
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const created = data.message as ChatMessage | undefined;
+        if (!created) return;
+
+        setMessages((prev) => [...prev, created]);
+        lastTsRef.current = created.created_at;
+        void fetchUsers(true);
+    }, [draft, selectedUserId, fetchUsers]);
 
     return (
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden h-[70dvh] min-h-[500px] flex">
             <aside className="w-[320px] border-r border-slate-100 flex flex-col">
                 <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
                     <h3 className="font-bold text-slate-800">User Chats</h3>
-                    <p className="text-xs text-slate-500 mt-1">{connected ? 'Socket Connected' : 'Connecting...'}</p>
+                    <p className="text-xs text-slate-500 mt-1">Auto refresh {USERS_POLL_MS / 1000}s</p>
                 </div>
                 <div className="overflow-y-auto flex-1">
                     {loadingUsers ? (
@@ -235,19 +245,26 @@ export default function AdminChatPanel() {
                 </div>
 
                 <div className="border-t border-slate-100 p-3 bg-white">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] text-slate-400">
+                            {refreshing ? 'Checking new messages...' : 'Up to date'}
+                        </span>
+                    </div>
                     <div className="flex items-center gap-2">
                         <input
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') sendMessage();
+                                if (e.key === 'Enter') {
+                                    void sendMessage();
+                                }
                             }}
                             placeholder={selectedUserId ? 'Type a message...' : 'Select a user first'}
                             disabled={!selectedUserId}
                             className="flex-1 h-10 px-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                         />
                         <button
-                            onClick={sendMessage}
+                            onClick={() => void sendMessage()}
                             disabled={!selectedUserId || !draft.trim()}
                             className="h-10 px-4 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:bg-slate-200 disabled:text-slate-400 inline-flex items-center gap-2"
                         >
@@ -260,4 +277,3 @@ export default function AdminChatPanel() {
         </div>
     );
 }
-

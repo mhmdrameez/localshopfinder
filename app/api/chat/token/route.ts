@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { signSocketToken, verifyAuthToken } from '@/lib/chatAuth';
+import { verifyAuthToken } from '@/lib/chatAuth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getSocketUrl } from '@/lib/socketServer';
 
 export async function GET() {
     try {
@@ -16,8 +15,6 @@ export async function GET() {
         if (me.role === 'user' && !me.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-
-        const socketToken = await signSocketToken(me);
 
         let unreadCount = 0;
         if (me.role === 'user' && me.id) {
@@ -41,8 +38,6 @@ export async function GET() {
 
         return NextResponse.json({
             success: true,
-            token: socketToken,
-            socketUrl: getSocketUrl(),
             me,
             unreadCount,
         }, { status: 200 });
@@ -51,4 +46,3 @@ export async function GET() {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 }
-
