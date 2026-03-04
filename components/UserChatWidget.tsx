@@ -157,8 +157,8 @@ export default function UserChatWidget() {
             </button>
 
             {open && (
-                <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[1px] flex items-end md:items-center justify-center">
-                    <div className="w-full md:w-[560px] h-[85dvh] md:h-[75dvh] bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden">
+                <div className="fixed inset-0 z-[4000] bg-black/40 backdrop-blur-[1px] flex items-end md:items-center justify-center">
+                    <div className="w-full md:w-[560px] h-[85dvh] md:h-[75dvh] md:max-h-[780px] bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden pb-[max(env(safe-area-inset-bottom),0px)]">
                         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                             <div>
                                 <h3 className="font-bold text-slate-900">Support Chat</h3>
@@ -206,7 +206,7 @@ export default function UserChatWidget() {
                             )}
                         </div>
 
-                        <div className="border-t border-slate-100 p-3 bg-white">
+                        <div className="border-t border-slate-100 p-3 bg-white sticky bottom-0">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-[11px] text-slate-400">
                                     {refreshing ? 'Checking new messages...' : 'Up to date'}
@@ -240,4 +240,3 @@ export default function UserChatWidget() {
         </>
     );
 }
-

@@ -30,6 +30,7 @@ export default function AdminChatPanel() {
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [mobileView, setMobileView] = useState<'users' | 'chat'>('users');
     const lastTsRef = useRef<string | null>(null);
 
     const selectedUser = useMemo(
@@ -120,6 +121,7 @@ export default function AdminChatPanel() {
         lastTsRef.current = null;
         void fetchMessages(selectedUserId, false);
         void markRead(selectedUserId);
+        setMobileView('chat');
     }, [selectedUserId, fetchMessages, markRead]);
 
     useEffect(() => {
@@ -155,8 +157,8 @@ export default function AdminChatPanel() {
     }, [draft, selectedUserId, fetchUsers]);
 
     return (
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden h-[70dvh] min-h-[500px] flex">
-            <aside className="w-[320px] border-r border-slate-100 flex flex-col">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden h-[76dvh] min-h-[560px] flex flex-col md:flex-row">
+            <aside className={`w-full md:w-[320px] md:border-r border-slate-100 flex flex-col md:h-full h-[42%] ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
                 <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
                     <h3 className="font-bold text-slate-800">User Chats</h3>
                     <p className="text-xs text-slate-500 mt-1">Auto refresh {USERS_POLL_MS / 1000}s</p>
@@ -195,8 +197,14 @@ export default function AdminChatPanel() {
                 </div>
             </aside>
 
-            <section className="flex-1 flex flex-col">
+            <section className={`flex-1 flex flex-col min-h-0 ${mobileView === 'users' ? 'hidden md:flex' : 'flex'}`}>
                 <div className="px-5 py-4 border-b border-slate-100 bg-white">
+                    <button
+                        onClick={() => setMobileView('users')}
+                        className="md:hidden text-xs font-bold text-indigo-600 mb-2"
+                    >
+                        Back to users
+                    </button>
                     {selectedUser ? (
                         <>
                             <h3 className="font-bold text-slate-900">{selectedUser.username}</h3>
@@ -207,7 +215,7 @@ export default function AdminChatPanel() {
                     )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+                <div className="flex-1 overflow-y-auto p-4 bg-slate-50 min-h-0">
                     {loadingMessages ? (
                         <div className="text-slate-400 flex items-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin" /> Loading messages...
@@ -244,7 +252,7 @@ export default function AdminChatPanel() {
                     )}
                 </div>
 
-                <div className="border-t border-slate-100 p-3 bg-white">
+                <div className="border-t border-slate-100 p-3 bg-white sticky bottom-0">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] text-slate-400">
                             {refreshing ? 'Checking new messages...' : 'Up to date'}
