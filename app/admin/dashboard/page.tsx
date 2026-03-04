@@ -237,7 +237,13 @@ export default function AdminDashboard() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {adminUsers.map((adminUser) => (
+                                {adminUsers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={2} className="px-6 py-8 text-center text-sm text-slate-500">
+                                            No admin L3 cache hits recorded yet.
+                                        </td>
+                                    </tr>
+                                ) : adminUsers.map((adminUser) => (
                                     <tr key={adminUser.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <p className="font-bold text-slate-900">{adminUser.username}</p>

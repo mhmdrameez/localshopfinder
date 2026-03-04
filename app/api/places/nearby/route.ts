@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Redis from 'ioredis';
 import * as jose from 'jose';
+import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -50,18 +52,10 @@ type ActorInfo = {
     email: string | null;
 };
 
-function readCookieValue(cookieHeader: string, key: string): string | null {
-    const cookie = cookieHeader
-        .split(';')
-        .map((entry) => entry.trim())
-        .find((entry) => entry.startsWith(`${key}=`));
-    if (!cookie) return null;
-    return decodeURIComponent(cookie.slice(key.length + 1));
-}
-
-async function getActorFromRequest(request: Request): Promise<ActorInfo | null> {
+async function getActorFromRequest(): Promise<ActorInfo | null> {
     try {
-        const token = readCookieValue(request.headers.get('cookie') || '', 'auth_token');
+        const cookieStore = await cookies();
+        const token = cookieStore.get('auth_token')?.value;
         if (!token) return null;
 
         const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_change_me');
@@ -92,15 +86,15 @@ async function getActorFromRequest(request: Request): Promise<ActorInfo | null> 
     }
 }
 
-async function recordL3CacheHit(request: Request, cacheKey: string) {
-    if (!supabase) return;
+async function recordL3CacheHit(cacheKey: string) {
+    if (!supabaseAdmin) return;
 
     try {
-        const actor = await getActorFromRequest(request);
+        const actor = await getActorFromRequest();
         if (!actor) return;
 
         const { data: existing } = await withTimeout(
-            supabase
+            supabaseAdmin
                 .from('cache_l3_hits')
                 .select('l3_hit_count')
                 .eq('subject_key', actor.subjectKey)
@@ -111,7 +105,7 @@ async function recordL3CacheHit(request: Request, cacheKey: string) {
         const nextHitCount = Number(existing?.l3_hit_count || 0) + 1;
 
         await withTimeout(
-            supabase
+            supabaseAdmin
                 .from('cache_l3_hits')
                 .upsert({
                     subject_type: actor.subjectType,
@@ -192,7 +186,7 @@ export async function GET(request: Request) {
                         if (redis) {
                             try { await withTimeout(redis.setex(cacheKey, 2592000, JSON.stringify(cachedData.shops_data)), 2000); } catch (e) { }
                         }
-                        await recordL3CacheHit(request, cacheKey);
+                        await recordL3CacheHit(cacheKey);
                         return NextResponse.json({ shops: cachedData.shops_data, source: 'supabase_cache' });
                     }
                 } catch (e: any) {

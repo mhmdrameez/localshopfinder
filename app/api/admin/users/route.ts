@@ -51,15 +51,6 @@ export async function GET() {
             }
         }
 
-        if (adminUsers.length === 0) {
-            adminUsers.push({
-                id: `admin:${process.env.ADMIN_EMAIL || 'admin@localshopfinder.com'}`,
-                username: 'Admin User',
-                email: process.env.ADMIN_EMAIL || 'admin@localshopfinder.com',
-                l3_hits: 0,
-            });
-        }
-
         const usersWithHits = (users || []).map((user) => ({
             ...user,
             l3_hits: userHitsById.get(user.id) || 0,
