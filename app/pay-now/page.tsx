@@ -13,16 +13,12 @@ type PayData = {
     upiLink: string;
     anyUpiAndroidIntent: string;
     gpayAndroidIntent: string;
+    phonepeAndroidIntent: string;
+    paytmAndroidIntent: string;
     gpayIosLink: string;
 };
 
 function getPrimaryLink(data: PayData) {
-    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    const isAndroid = /Android/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-
-    if (isAndroid) return data.anyUpiAndroidIntent || data.upiLink;
-    if (isIOS) return data.upiLink;
     return data.upiLink;
 }
 
@@ -33,6 +29,10 @@ function PayNowContent() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [data, setData] = useState<PayData | null>(null);
+    const [showFallbackApps, setShowFallbackApps] = useState(false);
+
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
+    const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 
     useEffect(() => {
         const load = async () => {
@@ -48,8 +48,8 @@ function PayNowContent() {
                     window.location.href = primary;
                 }, 300);
                 setTimeout(() => {
-                    window.location.href = parsed.upiLink;
-                }, 1200);
+                    setShowFallbackApps(true);
+                }, 1800);
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : 'Invalid payment link');
             } finally {
@@ -68,9 +68,12 @@ function PayNowContent() {
     const handlePayNow = () => {
         if (!data) return;
         window.location.href = getPrimaryLink(data);
-        setTimeout(() => {
-            window.location.href = data.upiLink;
-        }, 900);
+        setTimeout(() => setShowFallbackApps(true), 1200);
+    };
+
+    const openLink = (link: string) => {
+        if (!link) return;
+        window.location.href = link;
     };
 
     return (
@@ -104,6 +107,20 @@ function PayNowContent() {
                         >
                             Pay Now
                         </button>
+
+                        {showFallbackApps && (
+                            <div className="mt-4 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                                <p className="text-xs font-bold text-slate-700 mb-2">If it did not open, choose an app:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button type="button" onClick={() => openLink(data.upiLink)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white">Default UPI App</button>
+                                    {isAndroid && <button type="button" onClick={() => openLink(data.gpayAndroidIntent)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white">GPay</button>}
+                                    {isAndroid && <button type="button" onClick={() => openLink(data.phonepeAndroidIntent)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white">PhonePe</button>}
+                                    {isAndroid && <button type="button" onClick={() => openLink(data.paytmAndroidIntent)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-600 text-white">Paytm</button>}
+                                    {isAndroid && <button type="button" onClick={() => openLink(data.anyUpiAndroidIntent)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white">Any UPI App</button>}
+                                    {isIOS && <button type="button" onClick={() => openLink(data.gpayIosLink)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white">GPay iOS</button>}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

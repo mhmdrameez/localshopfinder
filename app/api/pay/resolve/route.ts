@@ -26,6 +26,8 @@ export async function GET(request: Request) {
         const upiLink = `upi://pay?${query}`;
         const anyUpiAndroidIntent = `intent://upi/pay?${query}#Intent;scheme=upi;end`;
         const gpayAndroidIntent = `intent://upi/pay?${query}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+        const phonepeAndroidIntent = `intent://upi/pay?${query}#Intent;scheme=upi;package=com.phonepe.app;end`;
+        const paytmAndroidIntent = `intent://upi/pay?${query}#Intent;scheme=upi;package=net.one97.paytm;end`;
         const gpayIosLink = `tez://upi/pay?${query}`;
 
         return NextResponse.json({
@@ -38,6 +40,8 @@ export async function GET(request: Request) {
             upiLink,
             anyUpiAndroidIntent,
             gpayAndroidIntent,
+            phonepeAndroidIntent,
+            paytmAndroidIntent,
             gpayIosLink,
         }, { status: 200 });
     } catch (error) {
