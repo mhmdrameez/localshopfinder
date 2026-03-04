@@ -71,6 +71,7 @@ export default function Home() {
           onClaimShop={setClaimShop}
           radius={radius}
           onRadiusChange={setRadius}
+          userLocation={center}
         />
       </div>
 

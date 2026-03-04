@@ -9,9 +9,10 @@ interface ShopCardProps {
     shop: Shop;
     onClick?: () => void;
     onClaim?: (shop: Shop) => void;
+    userLocation?: { lat: number, lng: number } | null;
 }
 
-export default function ShopCard({ shop, onClick, onClaim }: ShopCardProps) {
+export default function ShopCard({ shop, onClick, onClaim, userLocation }: ShopCardProps) {
     const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.isClaimed;
 
     return (
@@ -83,15 +84,29 @@ export default function ShopCard({ shop, onClick, onClaim }: ShopCardProps) {
                     )}
                     <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors group-hover:translate-x-1" />
                 </div>
-                <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors w-full"
-                >
-                    <ExternalLink className="w-3.5 h-3.5" /> Open in Google Maps
-                </a>
+                <div className="flex items-center gap-2 mt-1">
+                    <a
+                        href={userLocation
+                            ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${shop.lat},${shop.lng}`
+                            : `https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition-colors"
+                    >
+                        Get Directions
+                    </a>
+                    <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.name)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors"
+                    >
+                        <ExternalLink className="w-3.5 h-3.5" /> Open Maps
+                    </a>
+                </div>
             </div>
         </div>
     );

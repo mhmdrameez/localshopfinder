@@ -98,6 +98,19 @@ export default function OlaMap({ shops, selectedShopId, onSelectShop, center }: 
                         </Marker>
                     );
                 })}
+
+                {/* Current Location Marker */}
+                <Marker
+                    longitude={center.lng}
+                    latitude={center.lat}
+                    anchor="center"
+                    style={{ zIndex: 1000 }}
+                >
+                    <div className="relative flex items-center justify-center">
+                        <div className="absolute w-8 h-8 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+                        <div className="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md"></div>
+                    </div>
+                </Marker>
             </Map>
         </div>
     );

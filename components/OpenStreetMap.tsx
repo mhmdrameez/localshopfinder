@@ -94,6 +94,24 @@ export default function OpenStreetMap({ shops, selectedShopId, onSelectShop, cen
                         />
                     );
                 })}
+
+                {/* Current Location Marker */}
+                {center && (
+                    <Marker
+                        position={[center.lat, center.lng]}
+                        icon={L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                                     <div style="position: absolute; width: 32px; height: 32px; background-color: #3b82f6; border-radius: 50%; opacity: 0.75; animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                                     <div style="position: relative; width: 16px; height: 16px; background-color: #2563eb; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);"></div>
+                                   </div>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        })}
+                        zIndexOffset={1000}
+                    />
+                )}
+
                 <MapUpdater center={center} selectedShopId={selectedShopId} shops={shops} />
             </MapContainer>
         </div>

@@ -119,6 +119,19 @@ export default function Map({ shops, selectedShopId, onSelectShop, center: propC
                                 </AdvancedMarker>
                             );
                         })}
+
+                        {/* Current Location Marker */}
+                        {displayCenter && (
+                            <AdvancedMarker
+                                position={displayCenter}
+                                zIndex={1000} // Ensure it's above shop pins
+                            >
+                                <div className="relative flex items-center justify-center">
+                                    <div className="absolute w-8 h-8 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+                                    <div className="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md"></div>
+                                </div>
+                            </AdvancedMarker>
+                        )}
                     </GoogleMap>
                 </APIProvider>
             )}
