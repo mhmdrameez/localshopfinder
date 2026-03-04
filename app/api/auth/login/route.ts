@@ -7,25 +7,26 @@ import { cookies } from 'next/headers';
 export async function POST(req: Request) {
     try {
         const { email, password } = await req.json();
+        const normalizedEmail = String(email || '').trim().toLowerCase();
 
-        if (!email || !password) {
+        if (!normalizedEmail || !password) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
         }
 
         const { data: user, error } = await supabaseAdmin
             .from('app_users')
             .select('*')
-            .eq('email', email)
+            .eq('email', normalizedEmail)
             .single();
 
         if (error || !user) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+            return NextResponse.json({ error: 'Email not found' }, { status: 404 });
         }
 
         const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
         if (!isValidPassword) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+            return NextResponse.json({ error: 'Password incorrect' }, { status: 401 });
         }
 
         // Temporarily bypassing OTP verification
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true, role }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Login error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
