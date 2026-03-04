@@ -9,7 +9,7 @@ import MobileNavigation, { TabType } from '@/components/MobileNavigation';
 import ProfileView from '@/components/ProfileView';
 import { RefreshCw, Timer, Home as HomeIcon, List, User, ShieldCheck } from 'lucide-react';
 
-const COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes
+const COOLDOWN_MS = 1 * 60 * 1000; // 1 minutes
 
 export default function Home() {
   const [shops, setShops] = useState<Shop[]>([]);
