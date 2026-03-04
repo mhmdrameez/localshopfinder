@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 
-function generateRandomOffset(base: number, maxOffsetMeters: number) {
-    // 1 degree latitude is approx 111km.
-    const maxOffsetDegrees = (maxOffsetMeters / 111000);
-    // Random between -maxOffsetDegrees and +maxOffsetDegrees
-    return base + (Math.random() - 0.5) * 2 * maxOffsetDegrees;
+const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
 }
 
 export async function GET(request: Request) {
@@ -14,69 +20,80 @@ export async function GET(request: Request) {
     const lngParam = searchParams.get('lng');
     const radiusParam = searchParams.get('radius') || '1000';
 
-    // Default to Hyderabad if not provided
+    if (!GOOGLE_API_KEY) {
+        return NextResponse.json({ error: 'Google Maps API key is missing' }, { status: 500 });
+    }
+
     const lat = latParam ? parseFloat(latParam) : 17.3850;
     const lng = lngParam ? parseFloat(lngParam) : 78.4867;
     const radius = parseInt(radiusParam, 10);
 
-    // Generate dynamic mock shops around the user
-    // We spread them within the requested radius so some are close, some are far
-    const shopsDb = [
-        { id: '1', name: 'Sri Venkateshwara Kirana', category: 'Kirana', rating: 3.8, reviews: 12, hasPhone: false, isClaimed: false, lat: generateRandomOffset(lat, radius), lng: generateRandomOffset(lng, radius) },
-        { id: '2', name: 'Apollo Pharmacy', category: 'Medical', rating: 4.5, reviews: 342, hasPhone: true, isClaimed: true, lat: generateRandomOffset(lat, radius * 0.5), lng: generateRandomOffset(lng, radius * 0.5) },
-        { id: '3', name: 'Mona Bakery', category: 'Bakery', rating: 0, reviews: 0, hasPhone: false, isClaimed: false, lat: generateRandomOffset(lat, radius * 0.8), lng: generateRandomOffset(lng, radius * 0.8) },
-        { id: '4', name: 'Rapid Mobile Repair', category: 'Service', rating: 4.1, reviews: 45, hasPhone: true, isClaimed: false, lat: generateRandomOffset(lat, radius), lng: generateRandomOffset(lng, radius) },
-        { id: '5', name: 'Gupta Sweets & Snacks', category: 'Bakery', rating: 3.5, reviews: 8, hasPhone: false, isClaimed: false, lat: generateRandomOffset(lat, radius * 0.3), lng: generateRandomOffset(lng, radius * 0.3) },
-        { id: '6', name: 'Fresh Fruits Market', category: 'Kirana', rating: 4.8, reviews: 120, hasPhone: true, isClaimed: true, lat: generateRandomOffset(lat, radius), lng: generateRandomOffset(lng, radius) },
-        { id: '7', name: 'Daily Needs Store', category: 'Kirana', rating: 3.2, reviews: 5, hasPhone: false, isClaimed: false, lat: generateRandomOffset(lat, radius * 0.9), lng: generateRandomOffset(lng, radius * 0.9) },
-    ];
-
-    function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-        const R = 6371e3;
-        const φ1 = lat1 * Math.PI / 180;
-        const φ2 = lat2 * Math.PI / 180;
-        const Δφ = (lat2 - lat1) * Math.PI / 180;
-        const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+    // Map frontend categories to Google Places API keywords
+    let keyword = '';
+    switch (category) {
+        case 'Kirana':
+            keyword = 'grocery supermarket kirana store';
+            break;
+        case 'Medical':
+            keyword = 'pharmacy chemist medical store clinic';
+            break;
+        case 'Bakery':
+            keyword = 'bakery sweet shop';
+            break;
+        case 'Service':
+            keyword = 'repair fixing service center plumber electrician';
+            break;
+        case 'All':
+        default:
+            keyword = 'store shop business';
+            break;
     }
 
-    // Filter by radius and assign readable distance
-    let results = shopsDb.filter(shop => {
-        const dist = getDistance(lat, lng, shop.lat, shop.lng);
-        return dist <= radius;
-    }).map(shop => {
-        const dist = getDistance(lat, lng, shop.lat, shop.lng);
-        return {
-            ...shop,
-            distance: dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`
-        };
-    });
+    try {
+        const googleApiUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&keyword=${encodeURIComponent(keyword)}&key=${GOOGLE_API_KEY}`;
 
-    if (category !== 'All') {
-        results = results.filter(s => s.category === category);
+        const response = await fetch(googleApiUrl);
+        const data = await response.json();
+
+        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+            console.error('Google API Error:', data);
+            return NextResponse.json({ error: 'Failed to fetch places from Google' }, { status: 500 });
+        }
+
+        const apiResults = data.results || [];
+
+        let formattedShops = apiResults.map((place: any) => {
+            const dist = getDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng);
+
+            return {
+                id: place.place_id || Math.random().toString(),
+                name: place.name || 'Unknown Shop',
+                category: category === 'All' ? 'Local Business' : category, // Assign requested category
+                rating: place.rating || 0,
+                reviews: place.user_ratings_total || 0,
+                hasPhone: false, // Standard nearbysearch response doesn't give phone
+                isClaimed: false,
+                lat: place.geometry.location.lat,
+                lng: place.geometry.location.lng,
+                distance: dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`,
+                rawDistanceNum: dist, // used for sorting
+                issues: [] // required by standard properties
+            };
+        });
+
+        // Ensure we only return places actually within the requested radius
+        formattedShops = formattedShops.filter((shop: any) => shop.rawDistanceNum <= radius);
+
+        // Sort by distance locally just to ensure stable sorting for the UI
+        formattedShops.sort((a: any, b: any) => a.rawDistanceNum - b.rawDistanceNum);
+
+        // Clean up the temporary sort field
+        formattedShops = formattedShops.map(({ rawDistanceNum, ...shop }: any) => shop);
+
+        return NextResponse.json({ shops: formattedShops });
+
+    } catch (error) {
+        console.error('API Route Error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    // Apply logic to score/flag under-optimized businesses
-    const enrichedResults = results.map(shop => {
-        const issues = [];
-        if (shop.rating > 0 && shop.rating < 4.0) issues.push('Low Rating');
-        if (shop.reviews === 0) issues.push('No Reviews');
-        if (shop.reviews > 0 && shop.reviews < 20) issues.push('Few Reviews');
-
-        return { ...shop, issues };
-    });
-
-    // Sort: Put under-optimized at the top
-    enrichedResults.sort((a, b) => {
-        const aScore = (!a.hasPhone ? 1 : 0) + (!a.isClaimed ? 1 : 0) + a.issues.length;
-        const bScore = (!b.hasPhone ? 1 : 0) + (!b.isClaimed ? 1 : 0) + b.issues.length;
-        return bScore - aScore;
-    });
-
-    return NextResponse.json({ shops: enrichedResults });
 }
