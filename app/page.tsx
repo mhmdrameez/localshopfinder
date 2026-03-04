@@ -132,7 +132,7 @@ export default function Home() {
           <button
             onClick={handleForceRefresh}
             disabled={timeRemaining > 0 || isRefreshing}
-            className={`flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-full font-bold shadow-md transition-all border text-[10px] md:text-xs
+            className={`flex items-center gap-1.5 md:gap-2 px-4 py-2 md:px-6 md:py-3 rounded-full font-bold shadow-md transition-all border text-xs md:text-sm
                     ${timeRemaining > 0
                 ? 'bg-white/90 text-slate-400 border-slate-200 cursor-not-allowed backdrop-blur-sm'
                 : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-700 hover:scale-105 active:scale-95'
