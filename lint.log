@@ -1,0 +1,81 @@
+
+> my-app@0.1.0 lint C:\Users\muham\Documents\Local Shop Finder\my-app
+> eslint
+
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\admin\dashboard\page.tsx
+  34:23  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  43:8   warning  React Hook useEffect has a missing dependency: 'fetchUsers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  57:23  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\admin\approve\route.ts
+  35:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\admin\users\route.ts
+  32:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\auth\login\route.ts
+  73:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\auth\register\route.ts
+  68:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\auth\resend-otp\route.ts
+  47:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\auth\verify-otp\route.ts
+  52:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\claim\route.ts
+  14:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\api\places\nearby\route.ts
+   22:37   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+   36:31   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+   36:57   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+   83:29   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  104:140  warning  'e' is defined but never used               @typescript-eslint/no-unused-vars
+  108:29   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  139:53   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  160:52   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  170:55   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  171:33   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  171:41   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  172:48   warning  'rawDistanceNum' is defined but never used  @typescript-eslint/no-unused-vars
+  172:75   error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\login\page.tsx
+  52:23  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  88:24  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\page.tsx
+  98:6  warning  React Hook useEffect has a missing dependency: 'fetchShops'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\register\page.tsx
+  40:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\app\verify-otp\page.tsx
+   54:23  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   79:23  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  137:68  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\components\Map.tsx
+  6:10  warning  'Layers' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\components\OlaMap.tsx
+   7:10  warning  'Pin' is defined but never used           @typescript-eslint/no-unused-vars
+  44:41  warning  'resourceType' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\components\OpenStreetMap.tsx
+  10:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\components\ShopCard.tsx
+  4:49  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  5:10  warning  'motion' is defined but never used        @typescript-eslint/no-unused-vars
+
+C:\Users\muham\Documents\Local Shop Finder\my-app\middleware.ts
+  44:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 37 problems (26 errors, 11 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

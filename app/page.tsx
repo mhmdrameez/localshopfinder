@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Map, { Shop } from '@/components/Map';
 import ClaimModal from '@/components/ClaimModal';
+import MobileNavigation, { TabType } from '@/components/MobileNavigation';
+import ProfileView from '@/components/ProfileView';
 import { RefreshCw, Timer } from 'lucide-react';
 
 const COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes
@@ -22,6 +24,9 @@ export default function Home() {
 
   // Claim Modal State
   const [claimShop, setClaimShop] = useState<Shop | null>(null);
+
+  // Mobile Tab State
+  const [activeTab, setActiveTab] = useState<TabType>('map');
 
   // 1. Ask for location on mount
   useEffect(() => {
@@ -109,9 +114,10 @@ export default function Home() {
   };
 
   return (
-    <main className="flex h-[100dvh] w-full bg-slate-50 overflow-hidden flex-col md:flex-row font-sans">
-      {/* Sidebar - Side on desktop, Bottom/Scrollable Drawer on Mobile */}
-      <div className="w-full md:w-[420px] lg:w-[480px] h-[40dvh] md:h-full flex-shrink-0 relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-xl bg-white overflow-hidden order-last md:order-first rounded-t-2xl md:rounded-none">
+    <main className="flex h-[100dvh] w-full bg-slate-50 overflow-hidden flex-col md:flex-row font-sans pb-[70px] md:pb-0">
+      {/* Sidebar - Side on desktop, visible on mobile only when "list" tab is active */}
+      <div className={`w-full md:w-[420px] lg:w-[480px] h-full flex-shrink-0 relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-xl bg-white overflow-hidden order-last md:order-first rounded-t-2xl md:rounded-none
+      ${activeTab !== 'list' ? 'hidden md:flex' : 'flex'}`}>
         <Sidebar
           shops={shops}
           isLoading={isLoading}
@@ -123,8 +129,8 @@ export default function Home() {
         />
       </div>
 
-      {/* Map - Main view (Takes Top Priority on Mobile) */}
-      <div className="flex-1 h-[60dvh] md:h-full relative z-10 w-full bg-slate-100 order-first md:order-last">
+      {/* Map - Target for map view on mobile, visible on desktop layout */}
+      <div className={`flex-1 h-full relative z-10 w-full bg-slate-100 order-first md:order-last ${activeTab !== 'map' ? 'hidden md:block' : 'block'}`}>
 
         {/* Bottom map controls */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-[1000] flex flex-col md:flex-row items-center gap-2 md:gap-3 w-max">
@@ -172,6 +178,16 @@ export default function Home() {
           center={center}
         />
       </div>
+
+      {/* Profile/Settings View - Mobile only */}
+      {activeTab === 'profile' && (
+        <div className="w-full h-full md:hidden relative z-30 bg-white order-first md:order-last">
+          <ProfileView />
+        </div>
+      )}
+
+      {/* Bottom Navigation Tabs - Mobile Only */}
+      <MobileNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       <ClaimModal
         isOpen={!!claimShop}
