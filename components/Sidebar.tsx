@@ -47,14 +47,19 @@ export default function Sidebar({ shops, isLoading, selectedShopId, onSelectShop
 
     return (
         <div className="w-full h-full bg-slate-50 flex flex-col border-r border-slate-200 shadow-2xl z-20 overflow-hidden">
+            {/* Mobile Drag Handle Indicator */}
+            <div className="w-full flex justify-center md:hidden bg-white pt-2.5 pb-1">
+                <div className="w-10 h-1.5 bg-slate-200 rounded-full" />
+            </div>
+
             {/* Header / Search */}
-            <div className="px-5 pt-5 pb-3 bg-white border-b border-slate-100 shrink-0 shadow-sm relative z-10 flex flex-col">
-                <div className="mb-4">
+            <div className="px-4 md:px-5 pt-1 md:pt-5 pb-2 md:pb-3 bg-white border-b border-slate-100 shrink-0 shadow-sm relative z-10 flex flex-col">
+                <div className="mb-4 hidden md:block">
                     <h1 className="text-2xl font-black tracking-tight text-slate-900">Local Shop Finder</h1>
                     <p className="text-sm text-slate-500 mt-0.5">Discover hidden gems in your neighborhood</p>
                 </div>
 
-                <div className="relative mb-3">
+                <div className="relative mb-2 md:mb-3">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
@@ -66,7 +71,7 @@ export default function Sidebar({ shops, isLoading, selectedShopId, onSelectShop
                 </div>
 
                 {/* Radius Selector */}
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-2 md:mb-3">
                     <Compass className="w-4 h-4 text-slate-400" />
                     <span className="text-xs font-semibold text-slate-500">Search within:</span>
                     <div className="flex gap-1.5 overflow-x-auto scrollbar-none">

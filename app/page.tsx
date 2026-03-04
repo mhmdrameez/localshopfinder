@@ -109,9 +109,9 @@ export default function Home() {
   };
 
   return (
-    <main className="flex h-screen w-full bg-slate-50 overflow-hidden flex-col md:flex-row font-sans">
-      {/* Sidebar - Side on desktop, Bottom/Scrollable on Mobile */}
-      <div className="w-full md:w-[450px] lg:w-[500px] h-[55vh] md:h-full flex-shrink-0 relative z-20 shadow-xl">
+    <main className="flex h-[100dvh] w-full bg-slate-50 overflow-hidden flex-col md:flex-row font-sans">
+      {/* Sidebar - Side on desktop, Bottom/Scrollable Drawer on Mobile */}
+      <div className="w-full md:w-[420px] lg:w-[480px] h-[40dvh] md:h-full flex-shrink-0 relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-xl bg-white overflow-hidden order-last md:order-first rounded-t-2xl md:rounded-none">
         <Sidebar
           shops={shops}
           isLoading={isLoading}
@@ -123,46 +123,47 @@ export default function Home() {
         />
       </div>
 
-      {/* Map - Main view */}
-      <div className="flex-1 h-[45vh] md:h-full relative z-10 w-full bg-slate-100">
+      {/* Map - Main view (Takes Top Priority on Mobile) */}
+      <div className="flex-1 h-[60dvh] md:h-full relative z-10 w-full bg-slate-100 order-first md:order-last">
 
-        {/* Fetch Overlay Button */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000]">
+        {/* Bottom map controls */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-[1000] flex flex-col md:flex-row items-center gap-2 md:gap-3 w-max">
+          {/* Fetch Latest Button */}
           <button
             onClick={handleForceRefresh}
             disabled={timeRemaining > 0 || isRefreshing}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold shadow-xl transition-all border
+            className={`flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-full font-bold shadow-md transition-all border text-[10px] md:text-xs
                     ${timeRemaining > 0
                 ? 'bg-white/90 text-slate-400 border-slate-200 cursor-not-allowed backdrop-blur-sm'
                 : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-700 hover:scale-105 active:scale-95'
               }`}
           >
             {isRefreshing ? (
-              <><RefreshCw className="w-4 h-4 animate-spin" /> Fetching Live Data...</>
+              <><RefreshCw className="w-3 h-3 md:w-4 md:h-4 animate-spin" /> Fetching...</>
             ) : timeRemaining > 0 ? (
-              <><Timer className="w-4 h-4" /> Wait {formatTime(timeRemaining)}</>
+              <><Timer className="w-3 h-3 md:w-4 md:h-4" /> Wait {formatTime(timeRemaining)}</>
             ) : (
-              <><RefreshCw className="w-4 h-4" /> Fetch Latest Map Data</>
+              <><RefreshCw className="w-3 h-3 md:w-4 md:h-4" /> Fetch Latest Data</>
             )}
           </button>
-        </div>
 
-        {/* Data Source Badge Indicator */}
-        {dataSource && (
-          <div className="absolute bottom-6 right-6 z-[1000] px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-200 text-xs font-semibold flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${dataSource === 'live_google' ? 'bg-amber-500 animate-pulse' :
+          {/* Data Source Badge Indicator */}
+          {dataSource && (
+            <div className="px-2.5 md:px-3 py-1 md:py-1.5 rounded-full bg-white/95 backdrop-blur-md shadow-lg border border-slate-200 text-[10px] md:text-xs font-bold flex items-center gap-1.5 md:gap-2">
+              <div className={`w-2 h-2 rounded-full ${dataSource === 'live_google' ? 'bg-amber-500 animate-pulse' :
                 dataSource === 'redis_cache' ? 'bg-red-500' :
                   dataSource === 'memory_cache' ? 'bg-green-500' :
                     'bg-emerald-500' // Supabase
-              }`} />
-            <span className="text-slate-600 uppercase tracking-wider">
-              {dataSource === 'live_google' ? 'Live API (Billed)' :
-                dataSource === 'redis_cache' ? 'Redis Cloud Hit (Free)' :
-                  dataSource === 'memory_cache' ? 'RAM Cache Hit (Free)' :
-                    'Supabase Hit (Free)'}
-            </span>
-          </div>
-        )}
+                }`} />
+              <span className="text-slate-600 uppercase tracking-wider">
+                {dataSource === 'live_google' ? 'Live API (Billed)' :
+                  dataSource === 'redis_cache' ? 'Redis Cloud Hit (Free)' :
+                    dataSource === 'memory_cache' ? 'RAM Cache Hit (Free)' :
+                      'Supabase Hit (Free)'}
+              </span>
+            </div>
+          )}
+        </div>
 
         <Map
           shops={shops}
