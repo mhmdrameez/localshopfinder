@@ -1,19 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Star, MapPin, PhoneOff, AlertTriangle, CheckCircle2, ChevronRight, Fingerprint, ExternalLink } from 'lucide-react';
+import { Star, MapPin, PhoneOff, AlertTriangle, ChevronRight, Globe, MessageSquareX, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Shop } from './Map';
 
 interface ShopCardProps {
     shop: Shop;
     onClick?: () => void;
-    onClaim?: (shop: Shop) => void;
     userLocation?: { lat: number, lng: number } | null;
 }
 
-export default function ShopCard({ shop, onClick, onClaim, userLocation }: ShopCardProps) {
-    const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.isClaimed;
+export default function ShopCard({ shop, onClick, userLocation }: ShopCardProps) {
+    const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.hasWebsite;
 
     return (
         <div
@@ -51,9 +50,19 @@ export default function ShopCard({ shop, onClick, onClaim, userLocation }: ShopC
                             <PhoneOff className="w-3 h-3" /> NO PHONE
                         </div>
                     )}
-                    {!shop.isClaimed && (
-                        <div className="flex items-center gap-1 text-[10px] font-bold tracking-wide text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200/50">
-                            <Fingerprint className="w-3 h-3" /> UNCLAIMED
+                    {!shop.hasWebsite && (
+                        <div className="flex items-center gap-1 text-[10px] font-bold tracking-wide text-violet-700 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-200/50">
+                            <Globe className="w-3 h-3" /> NO WEBSITE
+                        </div>
+                    )}
+                    {shop.rating > 0 && shop.rating < 4.0 && (
+                        <div className="flex items-center gap-1 text-[10px] font-bold tracking-wide text-red-700 bg-red-50 px-2.5 py-1 rounded-full border border-red-200/50">
+                            <AlertTriangle className="w-3 h-3" /> LOW RATING
+                        </div>
+                    )}
+                    {shop.reviews === 0 && (
+                        <div className="flex items-center gap-1 text-[10px] font-bold tracking-wide text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200/50">
+                            <MessageSquareX className="w-3 h-3" /> NO REVIEWS
                         </div>
                     )}
                     {shop.issues.map((issue, idx) => (
@@ -66,24 +75,6 @@ export default function ShopCard({ shop, onClick, onClaim, userLocation }: ShopC
 
             {/* Action footer */}
             <div className="mt-4 pt-3 border-t border-slate-50 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                    {!shop.isClaimed ? (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onClaim?.(shop);
-                            }}
-                            className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                            Claim & Optimize
-                        </button>
-                    ) : (
-                        <div className="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Verified Profile
-                        </div>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors group-hover:translate-x-1" />
-                </div>
                 <div className="flex items-center gap-2 mt-1">
                     <a
                         href={userLocation

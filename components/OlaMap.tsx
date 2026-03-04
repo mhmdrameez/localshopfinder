@@ -62,7 +62,7 @@ export default function OlaMap({ shops, selectedShopId, onSelectShop, center }: 
             >
                 {shops.map((shop) => {
                     const isSelected = selectedShopId === shop.id;
-                    const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.isClaimed;
+                    const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.hasWebsite;
 
                     const pinBackground = isOptimized ? '#3b82f6' : '#f59e0b';
                     const pinBorder = isOptimized ? '#2563eb' : '#d97706';

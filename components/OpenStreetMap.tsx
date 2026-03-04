@@ -76,7 +76,7 @@ export default function OpenStreetMap({ shops, selectedShopId, onSelectShop, cen
                 />
                 {shops.map(shop => {
                     const isSelected = selectedShopId === shop.id;
-                    const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.isClaimed;
+                    const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.hasWebsite;
 
                     let icon = isOptimized ? optimizedIcon : underOptimizedIcon;
                     if (isSelected) {

@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
     "@vis.gl/react-google-maps": "^1.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.5",
+    "ioredis": "^5.10.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.576.0",
     "maplibre-gl": "^5.19.0",

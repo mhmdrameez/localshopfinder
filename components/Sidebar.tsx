@@ -18,13 +18,12 @@ interface SidebarProps {
     isLoading: boolean;
     selectedShopId: string | null;
     onSelectShop: (id: string) => void;
-    onClaimShop: (shop: Shop) => void;
     radius: number;
     onRadiusChange: (radius: number) => void;
     userLocation: { lat: number, lng: number } | null;
 }
 
-export default function Sidebar({ shops, isLoading, selectedShopId, onSelectShop, onClaimShop, radius, onRadiusChange, userLocation }: SidebarProps) {
+export default function Sidebar({ shops, isLoading, selectedShopId, onSelectShop, radius, onRadiusChange, userLocation }: SidebarProps) {
     const [activeCategory, setActiveCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const listRef = useRef<HTMLDivElement>(null);
@@ -129,7 +128,6 @@ export default function Sidebar({ shops, isLoading, selectedShopId, onSelectShop
                             <ShopCard
                                 shop={shop}
                                 onClick={() => onSelectShop(shop.id)}
-                                onClaim={onClaimShop}
                                 userLocation={userLocation}
                             />
                         </div>

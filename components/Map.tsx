@@ -23,6 +23,7 @@ export interface Shop {
     reviews: number;
     distance: string;
     hasPhone: boolean;
+    hasWebsite: boolean;
     isClaimed: boolean;
     issues: string[];
     lat: number;
@@ -96,10 +97,9 @@ export default function Map({ shops, selectedShopId, onSelectShop, center: propC
                     >
                         {shops.map(shop => {
                             const isSelected = selectedShopId === shop.id;
-                            const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.isClaimed;
+                            const isOptimized = shop.rating >= 4.0 && shop.hasPhone && shop.hasWebsite;
 
-                            // Highlight under-optimized shops with a distinct color (e.g. Amber/Red) to draw attention
-                            const pinBackground = isOptimized ? '#3b82f6' : '#f59e0b'; // blue vs amber
+                            const pinBackground = isOptimized ? '#3b82f6' : '#f59e0b';
                             const pinBorder = isOptimized ? '#2563eb' : '#d97706';
 
                             return (
