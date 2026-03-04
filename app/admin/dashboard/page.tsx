@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, UserCheck, UserX, Loader2, MapPin, MessageCircleMore } from 'lucide-react';
 import AdminChatPanel from '@/components/AdminChatPanel';
+
+const DASHBOARD_REFRESH_MS = 5000;
 
 interface User {
     id: string;
@@ -40,7 +42,10 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async (silent = false) => {
+        if (!silent) {
+            setLoading(true);
+        }
         try {
             const res = await fetch('/api/admin/users');
             if (!res.ok) {
@@ -60,13 +65,25 @@ export default function AdminDashboard() {
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to fetch users');
         } finally {
-            setLoading(false);
+            if (!silent) {
+                setLoading(false);
+            }
         }
-    };
+    }, [router]);
 
     useEffect(() => {
-        fetchUsers();
-    }, [router]);
+        void fetchUsers();
+    }, [fetchUsers]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                void fetchUsers(true);
+            }
+        }, DASHBOARD_REFRESH_MS);
+
+        return () => clearInterval(interval);
+    }, [fetchUsers]);
 
     const toggleApproval = async (userId: string, currentStatus: boolean) => {
         try {
