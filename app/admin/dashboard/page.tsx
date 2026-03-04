@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, UserCheck, UserX, Loader2, MapPin } from 'lucide-react';
+import { ShieldCheck, UserCheck, UserX, Loader2, MapPin, MessageCircleMore } from 'lucide-react';
+import AdminChatPanel from '@/components/AdminChatPanel';
 
 interface User {
     id: string;
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
     const [users, setUsers] = useState<User[]>([]);
     const [adminUsers, setAdminUsers] = useState<AdminUserHit[]>([]);
     const [totalL3Hits, setTotalL3Hits] = useState(0);
+    const [activeTab, setActiveTab] = useState<'users' | 'chat'>('users');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -44,8 +46,8 @@ export default function AdminDashboard() {
             setUsers(data.users || []);
             setAdminUsers(data.adminUsers || []);
             setTotalL3Hits(Number(data.totalL3Hits || 0));
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch users');
         } finally {
             setLoading(false);
         }
@@ -67,8 +69,8 @@ export default function AdminDashboard() {
 
             // Update local state instantly matching the DB
             setUsers(users.map(u => u.id === userId ? { ...u, is_approved: !currentStatus } : u));
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : 'Failed to update status');
         }
     };
 
@@ -110,13 +112,33 @@ export default function AdminDashboard() {
             </nav>
 
             <main className="max-w-5xl mx-auto p-6 mt-6">
+                <div className="mb-4 inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                            activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
+                        }`}
+                    >
+                        Users
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('chat')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors inline-flex items-center gap-2 ${
+                            activeTab === 'chat' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
+                        }`}
+                    >
+                        <MessageCircleMore className="w-4 h-4" />
+                        Chat
+                    </button>
+                </div>
+
                 {error && (
                     <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100">
                         {error}
                     </div>
                 )}
 
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                {activeTab === 'users' && <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
                     <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                         <h2 className="text-lg font-bold text-slate-800">Registered Users</h2>
                         <div className="flex items-center gap-2">
@@ -200,9 +222,9 @@ export default function AdminDashboard() {
                             </table>
                         </div>
                     )}
-                </div>
+                </div>}
 
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden mt-6">
+                {activeTab === 'users' && <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden mt-6">
                     <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="text-lg font-bold text-slate-800">Admin Users L3 Cache Hits</h2>
                     </div>
@@ -231,7 +253,9 @@ export default function AdminDashboard() {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </div>}
+
+                {activeTab === 'chat' && <AdminChatPanel />}
             </main>
         </div>
     );

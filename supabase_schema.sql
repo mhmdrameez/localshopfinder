@@ -45,3 +45,26 @@ ALTER TABLE public.cache_l3_hits ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public insert l3 hits" ON public.cache_l3_hits FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public select l3 hits" ON public.cache_l3_hits FOR SELECT USING (true);
 CREATE POLICY "Allow public update l3 hits" ON public.cache_l3_hits FOR UPDATE USING (true);
+
+-- Admin <-> user chat messages (one conversation per app user)
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    conversation_user_id UUID NOT NULL REFERENCES public.app_users(id) ON DELETE CASCADE,
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('user', 'admin')),
+    sender_user_id UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
+    sender_email TEXT,
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created_at
+    ON public.chat_messages(conversation_user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_unread
+    ON public.chat_messages(conversation_user_id, is_read);
+
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert chat messages" ON public.chat_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select chat messages" ON public.chat_messages FOR SELECT USING (true);
+CREATE POLICY "Allow public update chat messages" ON public.chat_messages FOR UPDATE USING (true);

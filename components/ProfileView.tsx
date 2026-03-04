@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { LogOut, User as UserIcon, Settings, ChevronRight, Loader2, ShieldCheck } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import UserChatWidget from '@/components/UserChatWidget';
 
 interface UserProfile {
     email: string;
@@ -10,8 +10,6 @@ interface UserProfile {
 }
 
 export default function ProfileView() {
-    const router = useRouter();
-
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -82,6 +80,7 @@ export default function ProfileView() {
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
+                <UserChatWidget />
             </div>
 
             <button
