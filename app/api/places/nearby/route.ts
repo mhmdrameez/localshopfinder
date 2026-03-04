@@ -4,8 +4,12 @@ import Redis from 'ioredis';
 import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
+import { sendBilledHitChargeEmail } from '@/lib/mailer';
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const HIT_CHARGE_RS = Number(process.env.BILLED_HIT_CHARGE_RS || 2);
+const UPI_ID = process.env.BILLING_UPI_ID || 'localshopfinder@oksbi';
+const UPI_PAYEE_NAME = process.env.BILLING_UPI_NAME || 'Local Shop Finder';
 
 // Initialize Supabase Client safely
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -157,6 +161,20 @@ async function recordBilledHit(cacheKey: string): Promise<number | null> {
                 }, { onConflict: 'subject_key' }),
             3000
         );
+
+        if (actor.email) {
+            const totalAmount = Number((nextBilled * HIT_CHARGE_RS).toFixed(2));
+            const txnNote = `Local Shop Finder billed hit #${nextBilled}`;
+            const upiQuery = `pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_PAYEE_NAME)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
+            const upiLink = `upi://pay?${upiQuery}`;
+            const gpayLink = `gpay://upi/pay?${upiQuery}`;
+
+            try {
+                await sendBilledHitChargeEmail(actor.email, nextBilled, HIT_CHARGE_RS, gpayLink, upiLink);
+            } catch (mailError) {
+                console.log('[Billed Hit Email] failed', mailError);
+            }
+        }
 
         return nextBilled;
     } catch (error: any) {

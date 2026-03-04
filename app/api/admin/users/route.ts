@@ -30,29 +30,49 @@ export async function GET() {
 
         const { data: l3Rows, error: l3Error } = await supabaseAdmin
             .from('cache_l3_hits')
-            .select('subject_type, subject_key, subject_email, app_user_id, l3_hit_count, billed_hit_count');
+            .select('subject_type, subject_key, subject_email, app_user_id, l3_hit_count, billed_hit_count, updated_at');
 
         // If analytics table is not created yet, keep dashboard functional with zero values.
         const safeL3Rows = l3Error ? [] : (l3Rows || []);
 
         const userHitsById = new Map<string, number>();
         const userBilledById = new Map<string, number>();
-        const adminUsers: Array<{ id: string; username: string; email: string; l3_hits: number; billed_hits: number }> = [];
+        const upiId = process.env.BILLING_UPI_ID || 'localshopfinder@oksbi';
+        const upiName = process.env.BILLING_UPI_NAME || 'Local Shop Finder';
+        const chargePerHitRs = Number(process.env.BILLED_HIT_CHARGE_RS || 2);
+        const usageRows: Array<{
+            id: string;
+            subject_type: string;
+            email: string;
+            l3_hits: number;
+            billed_hits: number;
+            total_due_rs: number;
+            gpay_link: string;
+            updated_at: string | null;
+        }> = [];
 
         for (const row of safeL3Rows) {
             const hits = Number(row.l3_hit_count || 0);
             const billedHits = Number(row.billed_hit_count || 0);
+            const due = Number((billedHits * chargePerHitRs).toFixed(2));
+            const note = `${row.subject_type || 'user'} usage ${row.subject_key || ''}`.trim();
+            const upiQuery = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${due.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+            const actorEmail = String(row.subject_email || '');
+
+            usageRows.push({
+                id: String(row.subject_key || row.app_user_id || actorEmail || Math.random().toString()),
+                subject_type: String(row.subject_type || 'user'),
+                email: actorEmail || 'unknown',
+                l3_hits: hits,
+                billed_hits: billedHits,
+                total_due_rs: due,
+                gpay_link: `gpay://upi/pay?${upiQuery}`,
+                updated_at: row.updated_at ? String(row.updated_at) : null,
+            });
+
             if (row.subject_type === 'user' && row.app_user_id) {
                 userHitsById.set(String(row.app_user_id), hits);
                 userBilledById.set(String(row.app_user_id), billedHits);
-            } else if (row.subject_type === 'admin') {
-                adminUsers.push({
-                    id: String(row.subject_key),
-                    username: 'Admin User',
-                    email: String(row.subject_email || 'admin@localshopfinder.vercel.app'),
-                    l3_hits: hits,
-                    billed_hits: billedHits,
-                });
             }
         }
 
@@ -64,10 +84,11 @@ export async function GET() {
 
         const totalL3Hits = safeL3Rows.reduce((sum, row) => sum + Number(row.l3_hit_count || 0), 0);
         const totalBilledHits = safeL3Rows.reduce((sum, row) => sum + Number(row.billed_hit_count || 0), 0);
+        const totalDueRs = Number((totalBilledHits * chargePerHitRs).toFixed(2));
 
-        return NextResponse.json({ success: true, users: usersWithHits, adminUsers, totalL3Hits, totalBilledHits }, { status: 200 });
+        return NextResponse.json({ success: true, users: usersWithHits, usageRows, totalL3Hits, totalBilledHits, totalDueRs, chargePerHitRs }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Admin users error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

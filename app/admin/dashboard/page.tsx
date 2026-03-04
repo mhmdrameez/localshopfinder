@@ -19,18 +19,23 @@ interface User {
 
 interface AdminUserHit {
     id: string;
-    username: string;
+    subject_type: string;
     email: string;
     l3_hits: number;
     billed_hits: number;
+    total_due_rs: number;
+    gpay_link: string;
+    updated_at: string | null;
 }
 
 export default function AdminDashboard() {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>([]);
-    const [adminUsers, setAdminUsers] = useState<AdminUserHit[]>([]);
+    const [usageRows, setUsageRows] = useState<AdminUserHit[]>([]);
     const [totalL3Hits, setTotalL3Hits] = useState(0);
     const [totalBilledHits, setTotalBilledHits] = useState(0);
+    const [totalDueRs, setTotalDueRs] = useState(0);
+    const [chargePerHitRs, setChargePerHitRs] = useState(2);
     const [activeTab, setActiveTab] = useState<'users' | 'chat'>('users');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -47,9 +52,11 @@ export default function AdminDashboard() {
             }
             const data = await res.json();
             setUsers(data.users || []);
-            setAdminUsers(data.adminUsers || []);
+            setUsageRows(data.usageRows || []);
             setTotalL3Hits(Number(data.totalL3Hits || 0));
             setTotalBilledHits(Number(data.totalBilledHits || 0));
+            setTotalDueRs(Number(data.totalDueRs || 0));
+            setChargePerHitRs(Number(data.chargePerHitRs || 2));
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to fetch users');
         } finally {
@@ -155,6 +162,9 @@ export default function AdminDashboard() {
                             <span className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
                                 Total Billed Hits (All): {totalBilledHits}
                             </span>
+                            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
+                                Total Due (All): Rs {totalDueRs.toFixed(2)}
+                            </span>
                         </div>
                     </div>
 
@@ -239,39 +249,59 @@ export default function AdminDashboard() {
 
                 {activeTab === 'users' && <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden mt-6">
                     <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-                        <h2 className="text-lg font-bold text-slate-800">Admin Users L3 Cache Hits</h2>
+                        <h2 className="text-lg font-bold text-slate-800">All Usage Actors (L3 + Billed)</h2>
+                        <p className="text-xs text-slate-500 mt-1">Each billed hit costs Rs {chargePerHitRs}</p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-600">
                             <thead className="text-xs uppercase bg-slate-50 text-slate-400 font-bold tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-4">Admin Email</th>
+                                    <th className="px-6 py-4">Type</th>
+                                    <th className="px-6 py-4">Email</th>
                                     <th className="px-6 py-4">L3 Cache Hits</th>
                                     <th className="px-6 py-4">Billed Hits</th>
+                                    <th className="px-6 py-4">Due (Rs)</th>
+                                    <th className="px-6 py-4 text-right">Payment</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {adminUsers.length === 0 ? (
+                                {usageRows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">
-                                            No admin L3 cache hits recorded yet.
+                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">
+                                            No usage rows recorded yet.
                                         </td>
                                     </tr>
-                                ) : adminUsers.map((adminUser) => (
-                                    <tr key={adminUser.id} className="hover:bg-slate-50/50 transition-colors">
+                                ) : usageRows.map((row) => (
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <p className="font-bold text-slate-900">{adminUser.username}</p>
-                                            <p className="text-xs text-slate-500 mt-0.5">{adminUser.email}</p>
+                                            <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-md border ${row.subject_type === 'admin'
+                                                ? 'text-purple-700 bg-purple-50 border-purple-100'
+                                                : 'text-slate-700 bg-slate-50 border-slate-200'
+                                                }`}>
+                                                {row.subject_type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="text-xs text-slate-500 mt-0.5">{row.email}</p>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
-                                                {Number(adminUser.l3_hits || 0)}
+                                                {Number(row.l3_hits || 0)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100">
-                                                {Number(adminUser.billed_hits || 0)}
+                                                {Number(row.billed_hits || 0)}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 font-bold text-amber-700">Rs {Number(row.total_due_rs || 0).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <a
+                                                href={row.gpay_link}
+                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 transition-colors"
+                                            >
+                                                Pay in GPay
+                                            </a>
                                         </td>
                                     </tr>
                                 ))}
