@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
@@ -26,7 +26,7 @@ function getPrimaryLink(data: PayData) {
     return data.upiLink;
 }
 
-export default function PayNowPage() {
+function PayNowContent() {
     const searchParams = useSearchParams();
     const token = searchParams.get('token') || '';
 
@@ -108,5 +108,21 @@ export default function PayNowPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function PayNowPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-[100dvh] bg-slate-50 p-4 flex items-center justify-center">
+                <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <div className="text-slate-500 inline-flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Preparing payment...
+                    </div>
+                </div>
+            </div>
+        }>
+            <PayNowContent />
+        </Suspense>
     );
 }
