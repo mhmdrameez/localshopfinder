@@ -136,35 +136,72 @@ export async function GET(request: Request) {
 
         const apiResults = data.results || [];
 
+        // Helper: detect category from Google place types
+        function detectCategory(types: string[]): string {
+            if (!types || types.length === 0) return 'Local Business';
+            const t = types.map((s: string) => s.toLowerCase());
+            if (t.some((x: string) => ['pharmacy', 'drugstore', 'hospital', 'doctor', 'dentist', 'health'].includes(x))) return 'Medical';
+            if (t.some((x: string) => ['bakery'].includes(x))) return 'Bakery';
+            if (t.some((x: string) => ['grocery_or_supermarket', 'supermarket', 'convenience_store'].includes(x))) return 'Kirana';
+            if (t.some((x: string) => ['car_repair', 'electrician', 'plumber', 'locksmith', 'painter', 'roofing_contractor', 'moving_company'].includes(x))) return 'Service';
+            return 'Local Business';
+        }
+
+        // Fetch details for each place to get real phone/website
+        // We batch up to 10 at a time to avoid rate limits
+        const detailsMap = new Map<string, { phone: string | null; website: string | null }>();
+        const placeIds = apiResults.map((p: any) => p.place_id).filter(Boolean);
+
+        // Fetch details in parallel (max 5 concurrent to respect rate limits)
+        const batchSize = 5;
+        for (let i = 0; i < placeIds.length; i += batchSize) {
+            const batch = placeIds.slice(i, i + batchSize);
+            const detailsResults = await Promise.allSettled(
+                batch.map(async (placeId: string) => {
+                    const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website&key=${GOOGLE_API_KEY}`;
+                    const res = await fetch(detailUrl);
+                    const json = await res.json();
+                    return { placeId, result: json.result || {} };
+                })
+            );
+            for (const r of detailsResults) {
+                if (r.status === 'fulfilled') {
+                    detailsMap.set(r.value.placeId, {
+                        phone: r.value.result.formatted_phone_number || null,
+                        website: r.value.result.website || null,
+                    });
+                }
+            }
+        }
+
         let formattedShops = apiResults.map((place: any) => {
             const dist = getDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng);
+            const details = detailsMap.get(place.place_id);
+            const hasPhone = !!(details?.phone);
+            const hasWebsite = !!(details?.website);
+            const shopCategory = category !== 'All' ? category : detectCategory(place.types || []);
+
+            const issues: string[] = [];
+            if (place.rating > 0 && place.rating < 4.0) issues.push('Low Rating');
+            if (!place.user_ratings_total || place.user_ratings_total === 0) issues.push('No Reviews');
+            if (!hasPhone) issues.push('No Phone');
+            if (!hasWebsite) issues.push('No Website');
 
             return {
                 id: place.place_id || Math.random().toString(),
                 name: place.name || 'Unknown Shop',
-                category: category === 'All' ? 'Local Business' : category,
+                category: shopCategory,
                 rating: place.rating || 0,
                 reviews: place.user_ratings_total || 0,
-                hasPhone: false,
-                hasWebsite: false, // The basic search gives limits
+                hasPhone,
+                hasWebsite,
                 isClaimed: false,
                 lat: place.geometry.location.lat,
                 lng: place.geometry.location.lng,
                 distance: dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`,
                 rawDistanceNum: dist,
-                issues: [] as string[]
+                issues,
             };
-        });
-
-        // Add issues based on basic metrics to power the map UI
-        formattedShops = formattedShops.map((shop: any) => {
-            const issues = [];
-            if (shop.rating > 0 && shop.rating < 4.0) issues.push('Low Rating');
-            if (shop.reviews === 0) issues.push('No Reviews');
-            if (Math.random() > 0.5) { shop.hasWebsite = true; shop.hasPhone = true; } // Simulated details for basic tier
-            if (!shop.hasPhone) issues.push('No Phone');
-            if (!shop.hasWebsite) issues.push('No Website');
-            return { ...shop, issues };
         });
 
         formattedShops = formattedShops.filter((shop: any) => shop.rawDistanceNum <= radius);
